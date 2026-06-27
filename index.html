@@ -800,7 +800,7 @@ function renderCatalogResults(){
   document.getElementById("page-catalog").innerHTML=`
     <div class="page-head"><div><h1>Katalog (AI)</h1><div class="crumb">Yönetim / <b>Katalog</b> / Sonuçlar</div></div>
       <div class="tbl-tools"><button class="btn btn-ghost btn-sm" onclick="resetCatalog()">Yeni PDF</button><button class="btn btn-ghost btn-sm" onclick="catGenAll()">✨ Tümüne görsel üret (${items.length})</button><button class="btn btn-primary btn-sm" onclick="addAllCatalog()">Tümünü ürünlere ekle (${items.length})</button></div></div>
-    <div class="note-box">Marka otomatik eklendi (gerekirse her kartta düzenleyebilirsin). Görselleri ✨ ile üret ya da AI Studio'da hazırlayıp "Görsel URL" alanına yapıştır, sonra ürünlere ekle.</div>
+    <div class="note-box"><b>Görsel:</b> En orijinal sonuç için <b>Orijinali kullan</b> (fotoğrafı hiç değiştirmez) ya da <b>Arka planı sil</b> (ürünü korur, zemini beyaz yapar). <b>✨ AI üret</b> yalnızca elinde foto yokken kullan — o, ürünü sıfırdan yeniden çizdiği için açıyı/detayı değiştirebilir. Markalar otomatik eklendi.</div>
     <div id="catList">${items.map(catCard).join("")}</div>`;
 }
 function catCard(x){
@@ -815,7 +815,9 @@ function catCard(x){
     <div>
       <div class="cat-head-row"><span class="cat-code">${esc(x.modelCode||"?")}-${esc(x.colorCode||"?")}</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="catGenImage('${x._id}')">✨ Görsel üret</button>
+          <button class="btn btn-soft btn-sm" onclick="catUseOriginal('${x._id}')" title="Yüklediğin fotoğrafı hiç değiştirmeden kullan">Orijinali kullan</button>
+          <button class="btn btn-ghost btn-sm" onclick="catRemoveBg('${x._id}')" title="Ürünü koru, sadece arka planı beyaz yap">Arka planı sil</button>
+          <button class="btn btn-ghost btn-sm" onclick="catGenImage('${x._id}')" title="Foto yoksa sıfırdan AI görsel üretir (ürünü yeniden çizer)">✨ AI üret</button>
           <button class="btn btn-soft btn-sm" onclick="addCatalogItem('${x._id}')">Ürünlere ekle</button>
         </div></div>
       <div class="cat-fields">
@@ -845,6 +847,42 @@ function catAddExtras(id,el){const it=state.catItems.find(x=>x._id===id);if(!it)
   it.extras=it.extras||[];const files=[...(el.files||[])];let left=files.length;if(!left)return;
   files.forEach(f=>{const r=new FileReader();r.onload=()=>{it.extras.push({data:String(r.result).split(",")[1],mime:f.type});left--;if(left===0){renderCatalogResults();toast(it.extras.length+" detay foto eklendi");}};r.readAsDataURL(f);});}
 function catClearExtras(id){const it=state.catItems.find(x=>x._id===id);if(!it)return;it.extras=[];renderCatalogResults();toast("Detay fotolar temizlendi");}
+
+// --- ORİJİNALİ KORU: yüklenen fotoğrafı hiç değiştirmeden ürün görseli yap ---
+async function catUseOriginal(id){
+  const it=state.catItems.find(x=>x._id===id);if(!it)return;
+  if(!it.source){toast("Önce ana fotoğrafı yükle (sol üstteki kutuya tıkla)");return;}
+  toast("Orijinal yükleniyor…");
+  const res=await post({action:"upload_image",data:it.source,mime:it.sourceMime||"image/jpeg",name:(it.modelCode||"g")+"-"+(it.colorCode||"")});
+  if(res.ok===false||!res.url){toast(res.error||"Yükleme hatası");return;}
+  catImg(id,res.url);toast("Orijinal foto eklendi ✓ (hiç değiştirilmedi)");
+}
+
+// --- ARKA PLANI SİL: ürünün pikselleri korunur, sadece arka plan beyaz olur (tarayıcıda) ---
+let _bgRemover=null;
+async function loadBgRemover(){
+  if(_bgRemover) return _bgRemover;
+  _bgRemover = await import("https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm");
+  return _bgRemover;
+}
+function blobToImage(blob){return new Promise((res,rej)=>{const u=URL.createObjectURL(blob);const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=u;});}
+async function catRemoveBg(id){
+  const it=state.catItems.find(x=>x._id===id);if(!it)return;
+  if(!it.source){toast("Önce ana fotoğrafı yükle");return;}
+  toast("Arka plan siliniyor… ilk seferde model iner, biraz sürebilir");
+  try{
+    const mod=await loadBgRemover();
+    const dataUrl="data:"+(it.sourceMime||"image/jpeg")+";base64,"+it.source;
+    const cut=await mod.removeBackground(dataUrl);            // şeffaf PNG (ürün aynen korunur)
+    const img=await blobToImage(cut);
+    const cv=document.createElement("canvas");cv.width=img.naturalWidth||img.width;cv.height=img.naturalHeight||img.height;
+    const ctx=cv.getContext("2d");ctx.fillStyle="#FFFFFF";ctx.fillRect(0,0,cv.width,cv.height);ctx.drawImage(img,0,0);
+    const b64=cv.toDataURL("image/jpeg",0.95).split(",")[1];
+    const res=await post({action:"upload_image",data:b64,mime:"image/jpeg",name:(it.modelCode||"g")+"-"+(it.colorCode||"")});
+    if(res.ok===false||!res.url){toast(res.error||"Yükleme hatası");return;}
+    catImg(id,res.url);toast("Arka plan silindi ✓ (ürün birebir korundu)");
+  }catch(e){toast("Arka plan silinemedi: "+((e&&e.message)||e)+" — istersen 'Orijinali kullan' dene");}
+}
 function buildImgPrompt(x){
   var label=((x.modelCode||"")+"-"+(x.colorCode||"")).replace(/^-|-$/g,"");
   var nExtra=(x.extras||[]).length;
