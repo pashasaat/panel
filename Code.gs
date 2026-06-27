@@ -3,7 +3,7 @@
  * Kurulum sonrası DEĞİŞİKLİK yaptıysan: Dağıt → Dağıtımları yönet → ✏️ →
  * Sürüm: "Yeni sürüm" → Dağıt  (URL aynı kalır)
  *
- * PANEL İÇİN: Ayarlar sayfasına bir satır ekle →  adminPin | <gizli-pin>
+ * PANEL İÇİN: Ayarlar sayfasına bir satır ekle →  adminPin | <3579Yokkuz>
  * Hiçbir veri SİLİNMEZ; her şey eklenir/güncellenir.
  */
 
