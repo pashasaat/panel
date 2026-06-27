@@ -718,23 +718,29 @@ function renderCatalogResults(){
   const items=state.catItems||[];
   document.getElementById("page-catalog").innerHTML=`
     <div class="page-head"><div><h1>Katalog (AI)</h1><div class="crumb">Yönetim / <b>Katalog</b> / Sonuçlar</div></div>
-      <div class="tbl-tools"><button class="btn btn-ghost btn-sm" onclick="resetCatalog()">Yeni PDF</button><button class="btn btn-primary btn-sm" onclick="addAllCatalog()">Tümünü ürünlere ekle (${items.length})</button></div></div>
+      <div class="tbl-tools"><button class="btn btn-ghost btn-sm" onclick="resetCatalog()">Yeni PDF</button><button class="btn btn-ghost btn-sm" onclick="catGenAll()">✨ Tümüne görsel üret (${items.length})</button><button class="btn btn-primary btn-sm" onclick="addAllCatalog()">Tümünü ürünlere ekle (${items.length})</button></div></div>
     <div class="note-box">Görselleri <b>AI Studio</b> ile temizledikten sonra her modelin "Görsel URL" alanına yapıştır. Marka adı bilinçli olarak eklenmedi; eklemek isteyen olursa kendi sorumluluğunda elle ekler.</div>
     <div id="catList">${items.map(catCard).join("")}</div>`;
 }
 function catCard(x){
   return `<div class="card cat-item" id="row-${x._id}">
-    <div class="cat-thumb">${x.image?`<img src="${esc(x.image)}" onerror="this.style.display='none'"/>`:`<div class="ph">Görsel<br>yapıştır →</div>`}</div>
+    <div>
+      <div class="cat-thumb" onclick="catPickSource('${x._id}')" title="Kaynak fotoğraf yüklemek için tıkla">${x.image?`<img src="${esc(x.image)}" onerror="this.style.display='none'"/>`:`<div class="ph">Görsel<br>yapıştır / üret →</div>`}</div>
+      <input type="file" id="src-${x._id}" accept="image/*" style="display:none" onchange="catSetSource('${x._id}',this)"/>
+    </div>
     <div>
       <div class="cat-head-row"><span class="cat-code">${esc(x.modelCode||"?")}-${esc(x.colorCode||"?")}</span>
-        <button class="btn btn-soft btn-sm" onclick="addCatalogItem('${x._id}')">Ürünlere ekle</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="catGenImage('${x._id}')">✨ Görsel üret</button>
+          <button class="btn btn-soft btn-sm" onclick="addCatalogItem('${x._id}')">Ürünlere ekle</button>
+        </div></div>
       <div class="cat-fields">
         <div class="f"><label>Çerçeve şekli</label><input value="${esc(x.frameShape)}" oninput="catEdit('${x._id}','frameShape',this.value)"/></div>
         <div class="f"><label>Çerçeve rengi</label><input value="${esc(x.frameColor)}" oninput="catEdit('${x._id}','frameColor',this.value)"/></div>
         <div class="f"><label>Cam rengi</label><input value="${esc(x.lensColor)}" oninput="catEdit('${x._id}','lensColor',this.value)"/></div>
         <div class="f"><label>Polarize</label><input value="${esc(x.polarized)}" oninput="catEdit('${x._id}','polarized',this.value)"/></div>
         <div class="f"><label>Fiyat (USD)</label><input type="number" value="${esc(x.priceUSD)}" oninput="catEdit('${x._id}','priceUSD',this.value)"/></div>
-        <div class="f"><label>Görsel URL</label><input value="${esc(x.image)}" placeholder="AI Studio görsel linki" oninput="catImg('${x._id}',this.value)"/></div>
+        <div class="f"><label>Görsel URL</label><input id="imgurl-${x._id}" value="${esc(x.image)}" placeholder="üret veya yapıştır" oninput="catImg('${x._id}',this.value)"/></div>
         <div class="f full"><label>Açıklama (TR)</label><textarea rows="2" oninput="catEdit('${x._id}','descTR',this.value)">${esc(x.descTR)}</textarea></div>
         <div class="f full"><label>Açıklama (EN)</label><textarea rows="2" oninput="catEdit('${x._id}','descEN',this.value)">${esc(x.descEN)}</textarea></div>
       </div>
@@ -742,7 +748,34 @@ function catCard(x){
 }
 function catEdit(id,k,v){const it=state.catItems.find(x=>x._id===id);if(it)it[k]=v;}
 function catImg(id,v){const it=state.catItems.find(x=>x._id===id);if(!it)return;it.image=v;
-  const t=document.querySelector("#row-"+id+" .cat-thumb");if(t)t.innerHTML=v?`<img src="${esc(v)}" onerror="this.style.display='none'"/>`:`<div class="ph">Görsel<br>yapıştır →</div>`;}
+  const t=document.querySelector("#row-"+id+" .cat-thumb");if(t)t.innerHTML=v?`<img src="${esc(v)}" onerror="this.style.display='none'"/>`:`<div class="ph">Görsel<br>yapıştır / üret →</div>`;
+  const inp=document.getElementById("imgurl-"+id);if(inp&&inp.value!==v)inp.value=v;}
+function catPickSource(id){const f=document.getElementById("src-"+id);if(f)f.click();}
+function catSetSource(id,el){const f=el.files&&el.files[0];if(!f)return;const it=state.catItems.find(x=>x._id===id);if(!it)return;
+  const r=new FileReader();r.onload=()=>{it.source=String(r.result).split(",")[1];it.sourceMime=f.type;
+    const t=document.querySelector("#row-"+id+" .cat-thumb");if(t)t.innerHTML=`<img src="${r.result}"/>`;toast("Kaynak foto yüklendi — şimdi ✨ Görsel üret");};
+  r.readAsDataURL(f);}
+function buildImgPrompt(x){
+  var desc=[x.frameColor,x.frameShape,"çerçeveli güneş gözlüğü"].filter(Boolean).join(" ")+(x.lensColor?(", "+x.lensColor+" cam"):"")+(/evet|var|polar/i.test(x.polarized||"")?", polarize":"");
+  if(x.source){
+    return "Bu güneş gözlüğü fotoğrafını profesyonel e-ticaret görseline çevir: tamamen temiz saf beyaz (#FFFFFF) stüdyo arka planı, yumuşak doğal gölge, ürün ortalanmış ve net. Ürünü değiştirme, sadece arka planı temizle ve stüdyo kalitesine getir. Görselin altına küçük sade metin: "+((x.modelCode||"")+"-"+(x.colorCode||""))+".";
+  }
+  return "Profesyonel e-ticaret ürün fotoğrafı: "+desc+". Tamamen temiz saf beyaz (#FFFFFF) stüdyo arka planı, yumuşak gölgeler, ürün ortalanmış, yüksek çözünürlük, gerçekçi. Görselin altına küçük sade metin etiketi: "+((x.modelCode||"")+"-"+(x.colorCode||""))+". Marka logosu ekleme.";
+}
+async function catGenImage(id){
+  const it=state.catItems.find(x=>x._id===id);if(!it)return;
+  toast("Görsel üretiliyor… "+(it.modelCode||""));
+  const payload={action:"gen_image",prompt:buildImgPrompt(it),name:(it.modelCode||"g")+"-"+(it.colorCode||"")};
+  if(it.source){payload.source=it.source;payload.sourceMime=it.sourceMime;}
+  const res=await post(payload);
+  if(res.ok===false||!res.url){toast(res.error||"Görsel hatası");return;}
+  catImg(id,res.url);toast("Görsel hazır ✓ "+(it.modelCode||""));
+}
+async function catGenAll(){
+  const items=state.catItems||[];if(!items.length)return;
+  for(let i=0;i<items.length;i++){toast("Görsel "+(i+1)+"/"+items.length+"…");await catGenImage(items[i]._id);}
+  toast("Tüm görseller üretildi ✓");
+}
 function catToRow(x){
   const name=catTitle(x).trim()||x.modelCode||"Gözlük";
   const desc=[x.descTR,x.polarized?("Polarize: "+x.polarized):"",x.lensColor?("Cam: "+x.lensColor):""].filter(Boolean).join(" · ");
