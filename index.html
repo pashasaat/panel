@@ -806,8 +806,11 @@ function renderCatalogResults(){
 function catCard(x){
   return `<div class="card cat-item" id="row-${x._id}">
     <div>
-      <div class="cat-thumb" onclick="catPickSource('${x._id}')" title="Kaynak fotoğraf yüklemek için tıkla">${x.image?`<img src="${esc(x.image)}" onerror="this.style.display='none'"/>`:`<div class="ph">Görsel<br>yapıştır / üret →</div>`}</div>
+      <div class="cat-thumb" onclick="catPickSource('${x._id}')" title="Ana kaynak fotoğraf yüklemek için tıkla">${x.image?`<img src="${esc(x.image)}" onerror="this.style.display='none'"/>`:`<div class="ph">Görsel<br>yapıştır / üret →</div>`}</div>
       <input type="file" id="src-${x._id}" accept="image/*" style="display:none" onchange="catSetSource('${x._id}',this)"/>
+      <input type="file" id="ext-${x._id}" accept="image/*" multiple style="display:none" onchange="catAddExtras('${x._id}',this)"/>
+      <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:6px" onclick="document.getElementById('ext-${x._id}').click()">+ detay foto (${(x.extras||[]).length})</button>
+      ${(x.extras||[]).length?`<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px;color:var(--muted)" onclick="catClearExtras('${x._id}')">detayları temizle</button>`:""}
     </div>
     <div>
       <div class="cat-head-row"><span class="cat-code">${esc(x.modelCode||"?")}-${esc(x.colorCode||"?")}</span>
@@ -836,20 +839,36 @@ function catImg(id,v){const it=state.catItems.find(x=>x._id===id);if(!it)return;
 function catPickSource(id){const f=document.getElementById("src-"+id);if(f)f.click();}
 function catSetSource(id,el){const f=el.files&&el.files[0];if(!f)return;const it=state.catItems.find(x=>x._id===id);if(!it)return;
   const r=new FileReader();r.onload=()=>{it.source=String(r.result).split(",")[1];it.sourceMime=f.type;
-    const t=document.querySelector("#row-"+id+" .cat-thumb");if(t)t.innerHTML=`<img src="${r.result}"/>`;toast("Kaynak foto yüklendi — şimdi ✨ Görsel üret");};
+    const t=document.querySelector("#row-"+id+" .cat-thumb");if(t)t.innerHTML=`<img src="${r.result}"/>`;toast("Ana foto yüklendi — şimdi ✨ Görsel üret");};
   r.readAsDataURL(f);}
+function catAddExtras(id,el){const it=state.catItems.find(x=>x._id===id);if(!it)return;
+  it.extras=it.extras||[];const files=[...(el.files||[])];let left=files.length;if(!left)return;
+  files.forEach(f=>{const r=new FileReader();r.onload=()=>{it.extras.push({data:String(r.result).split(",")[1],mime:f.type});left--;if(left===0){renderCatalogResults();toast(it.extras.length+" detay foto eklendi");}};r.readAsDataURL(f);});}
+function catClearExtras(id){const it=state.catItems.find(x=>x._id===id);if(!it)return;it.extras=[];renderCatalogResults();toast("Detay fotolar temizlendi");}
 function buildImgPrompt(x){
-  var desc=[x.frameColor,x.frameShape,"çerçeveli güneş gözlüğü"].filter(Boolean).join(" ")+(x.lensColor?(", "+x.lensColor+" cam"):"")+(/evet|var|polar/i.test(x.polarized||"")?", polarize":"");
+  var label=((x.modelCode||"")+"-"+(x.colorCode||"")).replace(/^-|-$/g,"");
+  var nExtra=(x.extras||[]).length;
+  var detayY = nExtra>0
+    ? " Sana verilen diğer "+nExtra+" detay fotoğrafını AYNI görselin içine küçük kareler (inset) halinde köşelere yerleştir: ana ürün büyük ve merkezde dursun, detay görselleri belirgin biçimde daha küçük ve kenarlarda olsun. Tek bir birleşik kompozisyon üret."
+    : "";
   if(x.source){
-    return "Bu güneş gözlüğü fotoğrafını profesyonel e-ticaret görseline çevir: tamamen temiz saf beyaz (#FFFFFF) stüdyo arka planı, yumuşak doğal gölge, ürün ortalanmış ve net. Ürünü değiştirme, sadece arka planı temizle ve stüdyo kalitesine getir. Görselin altına küçük sade metin: "+((x.modelCode||"")+"-"+(x.colorCode||""))+".";
+    return "Sana verilen ürün fotoğraf(lar)ını tek bir profesyonel e-ticaret görseline dönüştür. "
+      +"ÇOK ÖNEMLİ: İLK (ana) fotoğraftaki ürünün AÇISINI, YÖNÜNÜ, bakış perspektifini ve pozunu AYNEN koru — yandan çekildiyse yandan göster, açılı ise açılı kalsın; ürünü döndürme, çevirme, önden/düz gösterme. "
+      +"Ürünün kendisini, biçimini, rengini ve modelini değiştirme; yalnızca arka planı tamamen temiz saf beyaz (#FFFFFF) stüdyo zeminine çevir, yumuşak doğal gölge ekle, ürünü ortala ve netleştir."
+      +detayY
+      +(label?(" Görselin altına küçük sade metin etiketi: "+label+"."):"")
+      +" Marka logosu ekleme.";
   }
-  return "Profesyonel e-ticaret ürün fotoğrafı: "+desc+". Tamamen temiz saf beyaz (#FFFFFF) stüdyo arka planı, yumuşak gölgeler, ürün ortalanmış, yüksek çözünürlük, gerçekçi. Görselin altına küçük sade metin etiketi: "+((x.modelCode||"")+"-"+(x.colorCode||""))+". Marka logosu ekleme.";
+  var desc=[x.brand,x.frameColor,x.frameShape,"çerçeveli gözlük"].filter(Boolean).join(" ")+(x.lensColor?(", "+x.lensColor+" cam"):"");
+  return "Profesyonel e-ticaret ürün fotoğrafı: "+desc+". Tamamen temiz saf beyaz (#FFFFFF) stüdyo arka planı, yumuşak gölgeler, ürün ortalanmış, yüksek çözünürlük, gerçekçi."
+    +(label?(" Görselin altına küçük sade metin etiketi: "+label+"."):"")+" Marka logosu ekleme.";
 }
 async function catGenImage(id){
   const it=state.catItems.find(x=>x._id===id);if(!it)return;
   toast("Görsel üretiliyor… "+(it.modelCode||""));
   const payload={action:"gen_image",prompt:buildImgPrompt(it),name:(it.modelCode||"g")+"-"+(it.colorCode||"")};
   if(it.source){payload.source=it.source;payload.sourceMime=it.sourceMime;}
+  if(it.extras&&it.extras.length){payload.extras=it.extras.map(e=>({data:e.data,mime:e.mime}));}
   const res=await post(payload);
   if(res.ok===false||!res.url){toast(res.error||"Görsel hatası");return;}
   catImg(id,res.url);toast("Görsel hazır ✓ "+(it.modelCode||""));
