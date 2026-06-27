@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <style>
 :root{
   --primary:#DB3A4C; --primary-d:#C22A3C; --primary-soft:#FBE6E9;
@@ -243,7 +244,27 @@ img{display:block;max-width:100%}
 .cm-foot .send{width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;flex:0 0 auto}
 .cm-foot .send svg{width:21px;height:21px;stroke:#fff;fill:none;stroke-width:1.9}
 
-/* RESPONSIVE */
+/* KATALOG (AI) */
+.drop{border:2px dashed var(--line-2);border-radius:14px;padding:34px 24px;text-align:center;background:#fff;transition:.2s}
+.drop.drag{border-color:var(--primary);background:var(--primary-soft)}
+.drop .di{width:60px;height:60px;border-radius:14px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;margin:0 auto 14px}
+.drop .di svg{width:30px;height:30px;stroke-width:1.7;fill:none}
+.drop h3{margin:0 0 5px;color:var(--heading);font-size:17px}
+.drop p{margin:0;color:var(--muted);font-size:13.5px}
+.cat-item{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:16px;border:1px solid var(--line);border-radius:12px;margin-bottom:14px;background:#fff}
+.cat-thumb{width:120px;height:120px;border-radius:10px;background:var(--bg);display:grid;place-items:center;overflow:hidden;border:1px solid var(--line)}
+.cat-thumb img{width:100%;height:100%;object-fit:cover}
+.cat-thumb .ph{color:var(--faint);font-size:12px;text-align:center;padding:8px}
+.cat-fields{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+.cat-fields .f{display:flex;flex-direction:column;gap:4px}
+.cat-fields .f.full{grid-column:1/-1}
+.cat-fields label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.cat-fields input,.cat-fields textarea{border:1.5px solid var(--line-2);border-radius:7px;padding:8px 10px;font-size:13.5px;color:var(--heading);outline:none;width:100%}
+.cat-fields input:focus,.cat-fields textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(219,58,76,.1)}
+.cat-head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.cat-code{font-weight:700;color:var(--heading);font-size:15px}
+.note-box{background:var(--warn-soft);border:1px solid #FCE3C7;border-radius:10px;padding:12px 14px;font-size:13px;color:#9A6418;margin-bottom:18px}
+
 @media(max-width:1100px){.rstat-row{grid-template-columns:1fr 1fr}.ref-two{grid-template-columns:1fr}.panel-grid{grid-template-columns:1fr}}
 @media(max-width:920px){
   .sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.2)}
@@ -251,6 +272,7 @@ img{display:block;max-width:100%}
   .chat{grid-template-columns:1fr}.chat.show-main .chat-list{display:none}.chat:not(.show-main) .chat-main{display:none}
 }
 @media(max-width:560px){.rstat-row{grid-template-columns:1fr}
+  .cat-item{grid-template-columns:1fr}.cat-fields{grid-template-columns:1fr}
   .tbl thead{display:none}.tbl tbody td{display:block;padding:6px 18px;border:none}
   .tbl tbody tr{display:block;border-bottom:1px solid var(--line);padding:10px 0}}
 </style>
@@ -281,6 +303,7 @@ img{display:block;max-width:100%}
       <a class="sb-item" data-page="products"><svg viewBox="0 0 24 24"><path d="M3 9l9-5 9 5-9 5-9-5z"/><path d="M3 9v6l9 5 9-5V9"/></svg>Ürünler</a>
       <a class="sb-item" data-page="orders"><svg viewBox="0 0 24 24"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M6 6L5 3H2"/></svg>Siparişler <span class="badge" id="ordBadge" style="display:none">0</span></a>
       <a class="sb-item" data-page="offers"><svg viewBox="0 0 24 24"><path d="M20.6 13.4L12 22l-9-9V4h9z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Teklifler <span class="badge" id="offBadge" style="display:none">0</span></a>
+      <a class="sb-item" data-page="catalog"><svg viewBox="0 0 24 24"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5M8 13h8M8 17h5"/></svg>Katalog (AI)</a>
       <div class="sb-label">Pazarlama</div>
       <a class="sb-item" data-page="referral"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5"/><path d="M16 11l2 2 4-4"/></svg>Referans <span class="badge">Yeni</span></a>
       <a class="sb-item" data-page="chat"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-5A8 8 0 1 1 21 12z"/></svg>Sohbet</a>
@@ -307,6 +330,7 @@ img{display:block;max-width:100%}
       <section class="page" id="page-orders"></section>
       <section class="page" id="page-offers"></section>
       <section class="page" id="page-settings"></section>
+      <section class="page" id="page-catalog"></section>
 
       <!-- REFERANS (statik tasarım) -->
       <section class="page" id="page-referral">
@@ -385,6 +409,7 @@ img{display:block;max-width:100%}
 /* ===== CONFIG ===== */
 const CONFIG = { SHEET_API: "https://script.google.com/macros/s/AKfycbyGtD54VUuJkRUeZSuRO8FGF90BGScGIF5gTyIHv8fFukaXuQ0D0cD0pnwzKQ0yMhk/exec" };
 const state = { pin:"", data:null, view:"dash", prodQ:"" };
+window.state=state;
 
 /* ===== LOGIN ===== */
 function login(){
@@ -452,6 +477,7 @@ function go(v){
   closeSb(); window.scrollTo(0,0);
   if(v==="dash")renderDash(); if(v==="products")renderProducts();
   if(v==="orders")renderOrders(); if(v==="offers")renderOffers(); if(v==="settings")renderSettings();
+  if(v==="catalog")renderCatalog();
 }
 function render(){ // tümünü tazele
   renderDash();renderProducts();renderOrders();renderOffers();renderSettings();updateBadges();
@@ -608,7 +634,133 @@ async function savePin(){const v=document.getElementById("set-adminPin").value.t
   const res=await post({action:"save_setting",key:"adminPin",value:v});if(res.ok===false){toast(res.error||"Hata");return;}
   state.pin=v;sessionStorage.setItem("ersa_pin",v);toast("PIN değiştirildi ✓");}
 
-/* ===== SOHBET (statik) ===== */
+/* ===== KATALOG (AI) ===== */
+state.catItems=null; state.catFile=null;
+function renderCatalog(){
+  const el=document.getElementById("page-catalog");
+  if(state.catItems){ renderCatalogResults(); return; }
+  el.innerHTML=`
+    <div class="page-head"><div><h1>Katalog (AI)</h1><div class="crumb">Yönetim / <b>Katalog</b></div></div></div>
+    <div class="note-box">PDF'deki her model markasız olarak ayrıştırılır: model kodu, renk kodu, çerçeve şekli, çerçeve & cam rengi, polarize bilgisi ve TR/EN açıklama. Marka adı eklenmez. Görselleri AI Studio ile temizleyip URL'lerini buraya yapıştırırsın, sonra tek tıkla ürünlere eklenir.</div>
+    <div class="card card-pad">
+      <div class="drop" id="drop">
+        <div class="di"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></div>
+        <h3 id="dropTitle">PDF kataloğu yükle</h3>
+        <p id="dropSub">Tıkla veya sürükle-bırak · yalnızca .pdf</p>
+        <input id="pdfInput" type="file" accept="application/pdf" style="display:none"/>
+      </div>
+      <button class="btn btn-primary" id="parseBtn" style="margin-top:16px;display:none" onclick="parseCatalog()">Ayrıştır</button>
+    </div>
+    <div id="catBusy" style="display:none"><div class="spin"></div><p class="muted" style="text-align:center">AI kataloğu okuyor… (büyük PDF'lerde 1-2 dk sürebilir)</p></div>`;
+  const drop=document.getElementById("drop"),inp=document.getElementById("pdfInput");
+  drop.onclick=()=>inp.click();
+  inp.onchange=()=>pickPdf(inp.files[0]);
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add("drag");};
+  drop.ondragleave=()=>drop.classList.remove("drag");
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove("drag");pickPdf(e.dataTransfer.files[0]);};
+}
+function pickPdf(f){
+  if(!f){return;} if(f.type!=="application/pdf"){toast("Sadece PDF");return;}
+  state.catFile=f;
+  document.getElementById("dropTitle").textContent=f.name;
+  document.getElementById("dropSub").textContent=(f.size/1024/1024).toFixed(1)+" MB · hazır";
+  document.getElementById("parseBtn").style.display="";
+}
+async function parseCatalog(){
+  if(!state.catFile){toast("Önce PDF seç");return;}
+  document.getElementById("parseBtn").style.display="none";
+  const busy=document.getElementById("catBusy");
+  busy.style.display="";
+  busy.innerHTML=`<div class="spin"></div><p class="muted" id="catProg" style="text-align:center">Hazırlanıyor…</p>`;
+  const setProg=t=>{const p=document.getElementById("catProg");if(p)p.textContent=t;};
+  const CHUNK=10;
+  let all=[];
+  try{
+    const buf=await state.catFile.arrayBuffer();
+    let chunks=[];
+    // pdf-lib varsa 10'lu sayfalara böl
+    if(window.PDFLib&&window.PDFLib.PDFDocument){
+      const src=await window.PDFLib.PDFDocument.load(buf,{ignoreEncryption:true});
+      const total=src.getPageCount();
+      for(let s=0;s<total;s+=CHUNK){
+        const sub=await window.PDFLib.PDFDocument.create();
+        const idx=[];for(let i=s;i<Math.min(s+CHUNK,total);i++)idx.push(i);
+        const pages=await sub.copyPages(src,idx);
+        pages.forEach(p=>sub.addPage(p));
+        const b64=await sub.saveAsBase64({dataUri:false});
+        chunks.push({b64:b64,from:s+1,to:Math.min(s+CHUNK,total),total:total});
+      }
+    }else{
+      // pdf-lib yoksa tek parça gönder
+      const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(state.catFile);});
+      chunks.push({b64:b64,from:1,to:0,total:0});
+    }
+    for(let i=0;i<chunks.length;i++){
+      const c=chunks[i];
+      setProg(c.total?`Sayfa ${c.from}-${c.to} işleniyor… (${i+1}/${chunks.length})`:"AI kataloğu okuyor…");
+      const res=await post({action:"parse_catalog",pdf:c.b64,filename:state.catFile.name,page_from:c.from,page_to:c.to});
+      if(res.ok===false){toast(res.error||"Bir parça başarısız ("+c.from+"-"+c.to+")");continue;}
+      if(res.items&&res.items.length) all=all.concat(res.items);
+      setProg(`${all.length} model bulundu… (${i+1}/${chunks.length})`);
+    }
+  }catch(e){
+    busy.style.display="none";document.getElementById("parseBtn").style.display="";
+    toast("PDF işlenemedi: "+e.message);return;
+  }
+  busy.style.display="none";
+  if(!all.length){toast("Hiç model bulunamadı");document.getElementById("parseBtn").style.display="";return;}
+  state.catItems=all.map((x,i)=>Object.assign({_id:"k"+i,image:"",priceUSD:""},x));
+  toast(all.length+" model bulundu ✓");
+  renderCatalogResults();
+}
+function catTitle(x){return [x.modelCode,x.colorCode].filter(Boolean).join("-")+" "+[x.frameShape,x.frameColor].filter(Boolean).join(" ");}
+function renderCatalogResults(){
+  const items=state.catItems||[];
+  document.getElementById("page-catalog").innerHTML=`
+    <div class="page-head"><div><h1>Katalog (AI)</h1><div class="crumb">Yönetim / <b>Katalog</b> / Sonuçlar</div></div>
+      <div class="tbl-tools"><button class="btn btn-ghost btn-sm" onclick="resetCatalog()">Yeni PDF</button><button class="btn btn-primary btn-sm" onclick="addAllCatalog()">Tümünü ürünlere ekle (${items.length})</button></div></div>
+    <div class="note-box">Görselleri <b>AI Studio</b> ile temizledikten sonra her modelin "Görsel URL" alanına yapıştır. Marka adı bilinçli olarak eklenmedi; eklemek isteyen olursa kendi sorumluluğunda elle ekler.</div>
+    <div id="catList">${items.map(catCard).join("")}</div>`;
+}
+function catCard(x){
+  return `<div class="card cat-item" id="row-${x._id}">
+    <div class="cat-thumb">${x.image?`<img src="${esc(x.image)}" onerror="this.style.display='none'"/>`:`<div class="ph">Görsel<br>yapıştır →</div>`}</div>
+    <div>
+      <div class="cat-head-row"><span class="cat-code">${esc(x.modelCode||"?")}-${esc(x.colorCode||"?")}</span>
+        <button class="btn btn-soft btn-sm" onclick="addCatalogItem('${x._id}')">Ürünlere ekle</button></div>
+      <div class="cat-fields">
+        <div class="f"><label>Çerçeve şekli</label><input value="${esc(x.frameShape)}" oninput="catEdit('${x._id}','frameShape',this.value)"/></div>
+        <div class="f"><label>Çerçeve rengi</label><input value="${esc(x.frameColor)}" oninput="catEdit('${x._id}','frameColor',this.value)"/></div>
+        <div class="f"><label>Cam rengi</label><input value="${esc(x.lensColor)}" oninput="catEdit('${x._id}','lensColor',this.value)"/></div>
+        <div class="f"><label>Polarize</label><input value="${esc(x.polarized)}" oninput="catEdit('${x._id}','polarized',this.value)"/></div>
+        <div class="f"><label>Fiyat (USD)</label><input type="number" value="${esc(x.priceUSD)}" oninput="catEdit('${x._id}','priceUSD',this.value)"/></div>
+        <div class="f"><label>Görsel URL</label><input value="${esc(x.image)}" placeholder="AI Studio görsel linki" oninput="catImg('${x._id}',this.value)"/></div>
+        <div class="f full"><label>Açıklama (TR)</label><textarea rows="2" oninput="catEdit('${x._id}','descTR',this.value)">${esc(x.descTR)}</textarea></div>
+        <div class="f full"><label>Açıklama (EN)</label><textarea rows="2" oninput="catEdit('${x._id}','descEN',this.value)">${esc(x.descEN)}</textarea></div>
+      </div>
+    </div></div>`;
+}
+function catEdit(id,k,v){const it=state.catItems.find(x=>x._id===id);if(it)it[k]=v;}
+function catImg(id,v){const it=state.catItems.find(x=>x._id===id);if(!it)return;it.image=v;
+  const t=document.querySelector("#row-"+id+" .cat-thumb");if(t)t.innerHTML=v?`<img src="${esc(v)}" onerror="this.style.display='none'"/>`:`<div class="ph">Görsel<br>yapıştır →</div>`;}
+function catToRow(x){
+  const name=catTitle(x).trim()||x.modelCode||"Gözlük";
+  const desc=[x.descTR,x.polarized?("Polarize: "+x.polarized):"",x.lensColor?("Cam: "+x.lensColor):""].filter(Boolean).join(" · ");
+  return {id:("g"+(x.modelCode||"")+"-"+(x.colorCode||"")).replace(/\s+/g,"").toLowerCase()||("g"+Date.now()),
+    type:"gozluk",brand:"",model:x.modelCode||"",name:name,priceUSD:x.priceUSD||"",condition:"Yeni",
+    listedAt:today(),qty:1,active:"TRUE",images:x.image||"",desc:desc};
+}
+async function addCatalogItem(id){const it=state.catItems.find(x=>x._id===id);if(!it)return;
+  toast("Ekleniyor…");const res=await post({action:"save_product",row:catToRow(it)});
+  if(res.ok===false){toast(res.error||"Hata");return;}
+  toast("Eklendi ✓ "+(it.modelCode||""));await loadAdmin();}
+async function addAllCatalog(){const items=state.catItems||[];if(!items.length)return;
+  toast("Tümü ekleniyor…");let n=0;
+  for(const it of items){const res=await post({action:"save_product",row:catToRow(it)});if(res.ok!==false)n++;}
+  await loadAdmin();render();toast(n+" ürün eklendi ✓");}
+function resetCatalog(){state.catItems=null;state.catFile=null;renderCatalog();}
+
+
 function openConv(el,name,color,ini){document.querySelectorAll(".conv").forEach(c=>c.classList.remove("on"));el.classList.add("on");
   document.getElementById("cmName").textContent=name;const a=document.getElementById("cmAv");a.style.background=color;a.firstChild.textContent=ini;
   document.getElementById("chatBox").classList.add("show-main");}
