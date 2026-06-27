@@ -102,6 +102,8 @@ img{display:block;max-width:100%}
 .btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(219,58,76,.35)}
 .btn-primary:hover{background:var(--primary-d)}
 .btn-soft{background:var(--primary-soft);color:var(--primary)}
+.btn-danger{background:#FDECEC;color:#C0392B}
+.btn-danger:hover{background:#C0392B;color:#fff}
 .btn-ghost{border:1px solid var(--line-2);color:var(--text)}
 .btn-sm{padding:7px 13px;font-size:13px}
 .btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
@@ -519,20 +521,39 @@ function renderProducts(q){
   q=(state.prodQ||"").toLowerCase();
   let ps=products(); if(q) ps=ps.filter(p=>(String(p.name)+p.brand+p.id).toLowerCase().includes(q));
   const rows=ps.map(p=>{const on=isActive(p);return `<tr>
+    <td style="width:34px;text-align:center"><input type="checkbox" class="psel" value="${esc(p.id)}" onchange="updateSelCount()"/></td>
     <td><div class="u-cell"><img class="u-av" src="${firstImg(p)}" alt=""/><div><div class="u-name">${esc(p.name)||"(adsız)"}</div><div class="u-mail">${esc(p.brand)||""} · ${esc(p.id)}</div></div></div></td>
     <td><b style="color:var(--heading)">${usd(p.priceUSD)}</b></td>
     <td>${Number(p.qty)||1}</td>
     <td><span class="chip ${on?'ok':'off'}">${on?'Satışta':'Satıldı'}</span></td>
-    <td><div class="row-acts"><button class="btn btn-soft btn-sm" onclick="editProduct('${esc(p.id)}')">Düzenle</button><button class="btn btn-ghost btn-sm" onclick="toggleActive('${esc(p.id)}',${on})">${on?'Satıldı':'Aç'}</button></div></td>
+    <td><div class="row-acts"><button class="btn btn-soft btn-sm" onclick="editProduct('${esc(p.id)}')">Düzenle</button><button class="btn btn-ghost btn-sm" onclick="toggleActive('${esc(p.id)}',${on})">${on?'Satıldı':'Aç'}</button><button class="btn btn-danger btn-sm" onclick="deleteProduct('${esc(p.id)}')">Sil</button></div></td>
   </tr>`}).join("");
   document.getElementById("page-products").innerHTML=`
     <div class="page-head"><div><h1>Ürünler</h1><div class="crumb">Yönetim / <b>Ürünler</b></div></div></div>
     <div class="card"><div class="card-head"><h3>Ürün Listesi</h3><div class="tbl-tools">
+      <button class="btn btn-danger btn-sm" id="bulkDelBtn" style="display:none" onclick="deleteSelectedProducts()">Seçilenleri sil (0)</button>
       <div class="search-box"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="prodSearch" placeholder="Ürün ara…" oninput="renderProducts(this.value)" value="${q?esc(q):''}"/></div>
       <button class="btn btn-primary btn-sm" onclick="newProduct()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Yeni ürün</button></div></div>
-      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Ürün</th><th>Fiyat</th><th>Adet</th><th>Durum</th><th style="text-align:right">İşlem</th></tr></thead>
-      <tbody>${ps.length?rows:`<tr><td colspan="5"><div class="empty">Ürün bulunamadı</div></td></tr>`}</tbody></table></div></div>`;
+      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="width:34px;text-align:center"><input type="checkbox" id="selAll" onchange="toggleAllProd(this.checked)"/></th><th>Ürün</th><th>Fiyat</th><th>Adet</th><th>Durum</th><th style="text-align:right">İşlem</th></tr></thead>
+      <tbody>${ps.length?rows:`<tr><td colspan="6"><div class="empty">Ürün bulunamadı</div></td></tr>`}</tbody></table></div></div>`;
   if(q){const i=document.getElementById("prodSearch");i.focus();i.setSelectionRange(i.value.length,i.value.length);}
+}
+function selectedProdIds(){return [...document.querySelectorAll(".psel:checked")].map(c=>c.value);}
+function updateSelCount(){const n=selectedProdIds().length;const b=document.getElementById("bulkDelBtn");if(b){b.style.display=n?"":"none";b.textContent="Seçilenleri sil ("+n+")";}
+  const all=document.getElementById("selAll");if(all){const tot=document.querySelectorAll(".psel").length;all.checked=tot>0&&n===tot;}}
+function toggleAllProd(on){document.querySelectorAll(".psel").forEach(c=>c.checked=on);updateSelCount();}
+async function deleteProduct(id){
+  if(!confirm("Bu ürün silinsin mi?\n("+id+")\nSilinen ürün 'Silinenler' sayfasına taşınır, geri alınabilir."))return;
+  toast("Siliniyor…");const res=await post({action:"delete_product",ids:[id]});
+  if(res.ok===false){toast(res.error||"Hata");return;}
+  await loadAdmin();render();toast("Silindi ✓ (Silinenler'e taşındı)");
+}
+async function deleteSelectedProducts(){
+  const ids=selectedProdIds();if(!ids.length){toast("Önce ürün seç");return;}
+  if(!confirm(ids.length+" ürün silinsin mi?\nSilinenler 'Silinenler' sayfasına taşınır, geri alınabilir."))return;
+  toast(ids.length+" ürün siliniyor…");const res=await post({action:"delete_product",ids:ids});
+  if(res.ok===false){toast(res.error||"Hata");return;}
+  await loadAdmin();render();toast((res.deleted||ids.length)+" ürün silindi ✓");
 }
 
 /* ===== SİPARİŞLER ===== */
