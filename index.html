@@ -715,13 +715,14 @@ async function savePin(){const v=document.getElementById("set-adminPin").value.t
   state.pin=v;sessionStorage.setItem("ersa_pin",v);toast("PIN değiştirildi ✓");}
 
 /* ===== KATALOG (AI) ===== */
-state.catItems=null; state.catFile=null;
+state.catItems=null; state.catFile=null; state.catBrand=null;
 function renderCatalog(){
   const el=document.getElementById("page-catalog");
   if(state.catItems){ renderCatalogResults(); return; }
   el.innerHTML=`
     <div class="page-head"><div><h1>Katalog (AI)</h1><div class="crumb">Yönetim / <b>Katalog</b></div></div></div>
-    <div class="note-box">PDF'deki her model markasız olarak ayrıştırılır: model kodu, renk kodu, çerçeve şekli, çerçeve & cam rengi, polarize bilgisi ve TR/EN açıklama. Marka adı eklenmez. Görselleri AI Studio ile temizleyip URL'lerini buraya yapıştırırsın, sonra tek tıkla ürünlere eklenir.</div>
+    <div class="note-box">PDF'deki her model ve renk varyantı ayrıştırılır: marka, model kodu, renk kodu, çerçeve şekli, çerçeve & cam rengi, ölçü ve dolu TR/EN açıklama. Aşağıya marka yazarsan tüm ürünlere otomatik eklenir (boş bırakırsan AI sayfadaki marka/seri adını okur). Görselleri AI ile üretip ya da yapıştırıp tek tıkla ürünlere eklersin.</div>
+    <div class="card card-pad" style="margin-bottom:14px"><div class="fld"><label>Marka (tüm ürünlere uygulanır — opsiyonel)</label><input id="catBrand" placeholder="ör: immigrant" value="${esc(state.catBrand||'')}" oninput="state.catBrand=this.value"/></div></div>
     <div class="card card-pad">
       <div class="drop" id="drop">
         <div class="di"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></div>
@@ -778,7 +779,7 @@ async function parseCatalog(){
     for(let i=0;i<chunks.length;i++){
       const c=chunks[i];
       setProg(c.total?`Sayfa ${c.from}-${c.to} işleniyor… (${i+1}/${chunks.length})`:"AI kataloğu okuyor…");
-      const res=await post({action:"parse_catalog",pdf:c.b64,filename:state.catFile.name,page_from:c.from,page_to:c.to});
+      const res=await post({action:"parse_catalog",pdf:c.b64,filename:state.catFile.name,brand:state.catBrand||"",page_from:c.from,page_to:c.to});
       if(res.ok===false){toast(res.error||"Bir parça başarısız ("+c.from+"-"+c.to+")");continue;}
       if(res.items&&res.items.length) all=all.concat(res.items);
       setProg(`${all.length} model bulundu… (${i+1}/${chunks.length})`);
@@ -793,13 +794,13 @@ async function parseCatalog(){
   toast(all.length+" model bulundu ✓");
   renderCatalogResults();
 }
-function catTitle(x){return [x.modelCode,x.colorCode].filter(Boolean).join("-")+" "+[x.frameShape,x.frameColor].filter(Boolean).join(" ");}
+function catTitle(x){return [x.brand,[x.modelCode,x.colorCode].filter(Boolean).join("-")].filter(Boolean).join(" ")+" "+[x.frameShape,x.frameColor].filter(Boolean).join(" ");}
 function renderCatalogResults(){
   const items=state.catItems||[];
   document.getElementById("page-catalog").innerHTML=`
     <div class="page-head"><div><h1>Katalog (AI)</h1><div class="crumb">Yönetim / <b>Katalog</b> / Sonuçlar</div></div>
       <div class="tbl-tools"><button class="btn btn-ghost btn-sm" onclick="resetCatalog()">Yeni PDF</button><button class="btn btn-ghost btn-sm" onclick="catGenAll()">✨ Tümüne görsel üret (${items.length})</button><button class="btn btn-primary btn-sm" onclick="addAllCatalog()">Tümünü ürünlere ekle (${items.length})</button></div></div>
-    <div class="note-box">Görselleri <b>AI Studio</b> ile temizledikten sonra her modelin "Görsel URL" alanına yapıştır. Marka adı bilinçli olarak eklenmedi; eklemek isteyen olursa kendi sorumluluğunda elle ekler.</div>
+    <div class="note-box">Marka otomatik eklendi (gerekirse her kartta düzenleyebilirsin). Görselleri ✨ ile üret ya da AI Studio'da hazırlayıp "Görsel URL" alanına yapıştır, sonra ürünlere ekle.</div>
     <div id="catList">${items.map(catCard).join("")}</div>`;
 }
 function catCard(x){
@@ -815,14 +816,16 @@ function catCard(x){
           <button class="btn btn-soft btn-sm" onclick="addCatalogItem('${x._id}')">Ürünlere ekle</button>
         </div></div>
       <div class="cat-fields">
+        <div class="f"><label>Marka</label><input value="${esc(x.brand)}" oninput="catEdit('${x._id}','brand',this.value)"/></div>
         <div class="f"><label>Çerçeve şekli</label><input value="${esc(x.frameShape)}" oninput="catEdit('${x._id}','frameShape',this.value)"/></div>
         <div class="f"><label>Çerçeve rengi</label><input value="${esc(x.frameColor)}" oninput="catEdit('${x._id}','frameColor',this.value)"/></div>
         <div class="f"><label>Cam rengi</label><input value="${esc(x.lensColor)}" oninput="catEdit('${x._id}','lensColor',this.value)"/></div>
+        <div class="f"><label>Ölçü</label><input value="${esc(x.size)}" oninput="catEdit('${x._id}','size',this.value)"/></div>
         <div class="f"><label>Polarize</label><input value="${esc(x.polarized)}" oninput="catEdit('${x._id}','polarized',this.value)"/></div>
         <div class="f"><label>Fiyat (USD)</label><input type="number" value="${esc(x.priceUSD)}" oninput="catEdit('${x._id}','priceUSD',this.value)"/></div>
         <div class="f"><label>Görsel URL</label><input id="imgurl-${x._id}" value="${esc(x.image)}" placeholder="üret veya yapıştır" oninput="catImg('${x._id}',this.value)"/></div>
-        <div class="f full"><label>Açıklama (TR)</label><textarea rows="2" oninput="catEdit('${x._id}','descTR',this.value)">${esc(x.descTR)}</textarea></div>
-        <div class="f full"><label>Açıklama (EN)</label><textarea rows="2" oninput="catEdit('${x._id}','descEN',this.value)">${esc(x.descEN)}</textarea></div>
+        <div class="f full"><label>Açıklama (TR)</label><textarea rows="3" oninput="catEdit('${x._id}','descTR',this.value)">${esc(x.descTR)}</textarea></div>
+        <div class="f full"><label>Açıklama (EN)</label><textarea rows="3" oninput="catEdit('${x._id}','descEN',this.value)">${esc(x.descEN)}</textarea></div>
       </div>
     </div></div>`;
 }
@@ -858,9 +861,9 @@ async function catGenAll(){
 }
 function catToRow(x){
   const name=catTitle(x).trim()||x.modelCode||"Gözlük";
-  const desc=[x.descTR,x.polarized?("Polarize: "+x.polarized):"",x.lensColor?("Cam: "+x.lensColor):""].filter(Boolean).join(" · ");
+  const desc=[x.descTR,x.size?("Ölçü: "+x.size):"",x.lensColor?("Cam: "+x.lensColor):"",x.polarized&&/evet|var|polar/i.test(x.polarized)?"Polarize":""].filter(Boolean).join(" · ");
   return {id:("g"+(x.modelCode||"")+"-"+(x.colorCode||"")).replace(/\s+/g,"").toLowerCase()||("g"+Date.now()),
-    type:"gozluk",brand:"",model:x.modelCode||"",name:name,priceUSD:x.priceUSD||"",condition:"Yeni",
+    type:"gozluk",brand:x.brand||"",model:x.modelCode||"",name:name,priceUSD:x.priceUSD||"",condition:"Yeni",
     listedAt:today(),qty:1,active:"TRUE",images:x.image||"",desc:desc};
 }
 async function addCatalogItem(id){const it=state.catItems.find(x=>x._id===id);if(!it)return;
