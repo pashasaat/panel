@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#17171A" />
+<title>ERSA · Yönetici Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#F4F4F6;--card:#FFFFFF;--line:#ECECEF;--line-2:#E0E0E5;
+  --ink:#17171A;--text:#2C2C30;--muted:#8A8A8F;--faint:#B5B5BA;
+  --orange:#FF6A3D;--grad:linear-gradient(92deg,#FF7A4D,#F24E2A);--red:#F5402C;
+  --green:#1FB85A;--green-bg:#E9F7EE;--yellow:#F5B301;--black:#0E0E10;
+  --r:16px;--r-sm:11px;--ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:"Poppins",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px}
+
+/* ---- LOGIN ---- */
+#login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(120% 80% at 50% 0%,rgba(255,106,61,.12),transparent 60%),var(--bg)}
+.login-card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:34px 26px;
+  width:100%;max-width:360px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.08)}
+.login-card .logo{width:62px;height:62px;border-radius:16px;background:var(--black);color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:22px;margin:0 auto 16px}
+.login-card h1{margin:0;font-size:21px;font-weight:700}
+.login-card p{margin:6px 0 22px;color:var(--muted);font-size:13.5px}
+.pin-input{width:100%;text-align:center;letter-spacing:.4em;font-size:22px;font-weight:700;
+  border:1.5px solid var(--line-2);border-radius:12px;padding:14px;color:var(--ink)}
+.pin-input:focus{outline:none;border-color:var(--orange)}
+.login-err{color:var(--red);font-size:13px;margin-top:12px;min-height:18px;font-weight:500}
+.btn{border-radius:30px;font-weight:700;font-size:15px;padding:14px;transition:scale .12s var(--ease)}
+.btn:active{scale:.97}
+.btn-solid{background:var(--grad);color:#fff;box-shadow:0 6px 18px rgba(242,78,42,.28)}
+.btn-full{width:100%}
+.btn-ghost{border:1.5px solid var(--line-2);color:var(--ink)}
+.btn-outline{border:1.5px solid var(--orange);color:var(--orange)}
+.btn-sm{padding:9px 14px;font-size:13px;border-radius:30px}
+
+/* ---- APP ---- */
+#app{display:none}
+.topbar{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.topbar .row{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .lg{width:38px;height:38px;border-radius:10px;background:var(--black);color:#fff;display:grid;place-items:center;font-weight:700;font-size:15px}
+.brand b{font-size:17px;font-weight:700}.brand span{color:var(--muted);font-size:12px;font-weight:600}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:11px 15px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap;position:relative;border-radius:10px}
+.tab.on{color:var(--orange)}
+.tab.on::after{content:"";position:absolute;left:15px;right:15px;bottom:0;height:2.5px;background:var(--orange);border-radius:3px}
+.view{display:none;padding:20px 0 60px;animation:fade .25s var(--ease)}
+.view.on{display:block}
+@keyframes fade{from{opacity:0;translate:0 6px}to{opacity:1;translate:0 0}}
+h2.sec{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 14px;font-weight:600}
+
+/* ---- STAT CARDS ---- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:24px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.stat .n{font-size:26px;font-weight:700;line-height:1}
+.stat .k{color:var(--muted);font-size:13px;margin-top:6px;font-weight:500}
+.stat.accent{background:var(--grad);color:#fff;border:none}
+.stat.accent .k{color:rgba(255,255,255,.9)}
+
+/* ---- LIST CARDS ---- */
+.panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:720px){.panel-grid{grid-template-columns:1fr}}
+.block{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.block h3{margin:0 0 12px;font-size:15px;font-weight:700}
+.mini{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+.mini:last-child{border:none}
+.mini .t{font-size:13.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini .v{font-weight:700;font-size:13.5px}
+.empty{color:var(--muted);font-size:13.5px;padding:16px 0;text-align:center}
+
+/* ---- TOOLBAR ---- */
+.toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search{flex:1;min-width:160px;display:flex;align-items:center;gap:9px;background:var(--card);
+  border:1px solid var(--line-2);border-radius:30px;padding:11px 16px}
+.search input{flex:1;border:none;outline:none;background:none;font-size:14px}
+.search svg{width:17px;height:17px;stroke:var(--muted);fill:none;stroke-width:2}
+
+/* ---- PRODUCT ROWS ---- */
+.prow{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:12px;margin-bottom:11px}
+.prow .th{width:58px;height:58px;border-radius:11px;overflow:hidden;flex:0 0 auto;background:var(--bg);object-fit:cover}
+.prow .mid{flex:1;min-width:0}
+.prow .nm{font-size:14px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .sub{font-size:12px;color:var(--muted);margin-top:3px}
+.prow .pr{font-weight:700;font-size:15px;white-space:nowrap}
+.prow .acts{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+.tagdot{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px}
+.tag-on{background:var(--green-bg);color:#168a44}
+.tag-off{background:#F0F0F2;color:var(--muted)}
+.row-btns{display:flex;gap:7px}
+
+/* status select */
+.statSel{border:1.5px solid var(--line-2);border-radius:30px;padding:8px 12px;font-size:13px;font-weight:600;
+  color:var(--ink);background:var(--card)}
+.statSel.s-Yeni{border-color:var(--orange);color:var(--orange)}
+.statSel.s-Onaylandı,.statSel.s-Kabul,.statSel.s-Kargolandı{border-color:var(--green);color:#168a44}
+.statSel.s-İptal,.statSel.s-Red{border-color:var(--red);color:var(--red)}
+
+/* order/offer card */
+.ocard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.ocard .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+.ocard .date{font-size:12px;color:var(--muted)}
+.ocard .title{font-size:14.5px;font-weight:600;line-height:1.35}
+.ocard .meta{font-size:13px;color:var(--text);margin-top:6px;line-height:1.5}
+.ocard .meta b{color:var(--ink)}
+.ocard .amt{font-weight:700;font-size:17px;white-space:nowrap}
+
+/* ---- SETTINGS ---- */
+.fields{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 18px}
+.field{padding:16px 0;border-bottom:1px solid var(--line)}
+.field:last-child{border:none}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:7px}
+.field .hint{color:var(--muted);font-weight:400;font-size:12px}
+.field input,.field select,.field textarea{width:100%;border:1.5px solid var(--line-2);border-radius:10px;
+  padding:12px 13px;font-size:14.5px;color:var(--ink)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--orange)}
+
+/* ---- MODAL ---- */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:90;opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.on{opacity:1;pointer-events:auto}
+.modal{position:fixed;z-index:100;left:50%;top:50%;translate:-50% -50%;width:calc(100% - 28px);max-width:520px;
+  max-height:88dvh;background:var(--card);border-radius:20px;display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:opacity .25s,scale .25s;scale:.96;overflow:hidden}
+.modal.on{opacity:1;pointer-events:auto;scale:1}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+.modal-head h3{margin:0;font-size:17px;font-weight:700}
+.modal-head .x{font-size:24px;color:var(--muted);padding:4px}
+.modal-body{padding:8px 20px;overflow-y:auto}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px}
+.modal-foot .btn{flex:1}
+.mfield{padding:13px 0;border-bottom:1px solid var(--line)}
+.mfield:last-child{border:none}
+.mfield label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.04em}
+.mfield input,.mfield select,.mfield textarea{width:100%;border:1.5px solid var(--line-2);border-radius:10px;padding:11px 12px;font-size:14px;color:var(--ink)}
+.mfield input:focus,.mfield select:focus,.mfield textarea:focus{outline:none;border-color:var(--orange)}
+.mfield input[readonly]{background:var(--bg);color:var(--muted)}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:26px;translate:-50% 0;background:var(--ink);color:#fff;font-weight:600;
+  font-size:13.5px;padding:13px 18px;border-radius:30px;z-index:200;opacity:0;pointer-events:none;
+  transition:opacity .25s,translate .25s;max-width:88%;text-align:center}
+#toast.on{opacity:1;translate:-50% -6px}
+.spin{width:34px;height:34px;border:3px solid var(--line-2);border-top-color:var(--orange);border-radius:50%;
+  animation:sp .8s linear infinite;margin:40px auto}
+@keyframes sp{to{rotate:360deg}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-card">
+    <div class="logo">E</div>
+    <h1>ERSA Panel</h1>
+    <p>Yönetici girişi</p>
+    <input class="pin-input" id="pinInput" type="password" inputmode="numeric" placeholder="••••" autocomplete="off"/>
+    <div class="login-err" id="loginErr"></div>
+    <button class="btn btn-solid btn-full" id="loginBtn" style="margin-top:8px">Giriş</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="wrap">
+      <div class="row">
+        <div class="brand"><div class="lg">E</div><div><b>ERSA</b> <span>Panel</span></div></div>
+        <button class="btn btn-ghost btn-sm" onclick="logout()">Çıkış</button>
+      </div>
+      <nav class="tabs" id="tabs">
+        <button class="tab on" data-v="dash">Panel</button>
+        <button class="tab" data-v="products">Ürünler</button>
+        <button class="tab" data-v="orders">Siparişler</button>
+        <button class="tab" data-v="offers">Teklifler</button>
+        <button class="tab" data-v="settings">Ayarlar</button>
+      </nav>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="view on" id="view-dash"></section>
+    <section class="view" id="view-products"></section>
+    <section class="view" id="view-orders"></section>
+    <section class="view" id="view-offers"></section>
+    <section class="view" id="view-settings"></section>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="scrim" id="scrim" onclick="closeModal()"></div>
+<div class="modal" id="modal">
+  <div class="modal-head"><h3 id="modalTitle">Ürün</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-body" id="modalBody"></div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeModal()">Vazgeç</button>
+    <button class="btn btn-solid" id="modalSave">Kaydet</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ===== YAPILANDIRMA ===== */
+const CONFIG = {
+  SHEET_API: "https://script.google.com/macros/s/AKfycbztoFeww7_bGPfl59uUdgmQyDHTPaZAjyMjdV40o4A0HcMFOZeKo09RyJ-mJRaIzf9T/exec"
+};
+
+const state = { pin:"", data:null, view:"dash", editId:null };
+
+/* ===== LOGIN ===== */
+function login(){
+  const pin = document.getElementById("pinInput").value.trim();
+  if(!pin){ loginErr("PIN gir"); return; }
+  state.pin = pin;
+  loginErr(""); 
+  document.getElementById("loginBtn").textContent = "Kontrol ediliyor…";
+  loadAdmin().then(ok=>{
+    document.getElementById("loginBtn").textContent = "Giriş";
+    if(ok){
+      sessionStorage.setItem("ersa_pin", pin);
+      document.getElementById("login").style.display="none";
+      document.getElementById("app").style.display="block";
+      render();
+    }
+  });
+}
+function loginErr(m){ document.getElementById("loginErr").textContent=m; }
+function logout(){ sessionStorage.removeItem("ersa_pin"); location.reload(); }
+
+/* ===== VERİ ===== */
+async function loadAdmin(){
+  try{
+    const r = await fetch(CONFIG.SHEET_API + "?action=admin&pin=" + encodeURIComponent(state.pin));
+    const j = await r.json();
+    if(!j.ok){ loginErr(j.error||"Giriş başarısız"); return false; }
+    applyAdmin(j);
+    return true;
+  }catch(e){
+    loginErr("Bağlantı hatası — internet/URL kontrol et");
+    return false;
+  }
+}
+function applyAdmin(j){ state.data = j; }
+
+async function post(payload){
+  payload.pin = state.pin;
+  try{
+    const r = await fetch(CONFIG.SHEET_API,{method:"POST",body:JSON.stringify(payload)});
+    try{ return await r.json(); }catch(e){ return {ok:true}; } // opaque olsa da işlem geçer
+  }catch(e){ return {ok:false,error:String(e)}; }
+}
+async function refresh(){ await loadAdmin(); render(); }
+
+/* ===== PARA ===== */
+function usdTry(){ return Number((state.data&&state.data.settings&&state.data.settings.usdTry)||41)||41; }
+function tl(usd){ return "₺"+Math.round((Number(usd)||0)*usdTry()).toLocaleString("tr-TR"); }
+function usd(v){ return "$"+Math.round(Number(v)||0).toLocaleString("en-US"); }
+
+/* ===== ÜRÜN yardımcı ===== */
+function products(){ return (state.data&&state.data.products&&state.data.products.rows)||[]; }
+function productHeaders(){ return (state.data&&state.data.products&&state.data.products.headers)||[]; }
+function isActive(p){ const v=String(p.active).trim().toLowerCase(); return !(v==="false"||v==="0"||v==="hayır"||v==="hayir"||v==="no"||v===""); }
+function firstImg(p){
+  const s = String(p.images||"").split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean)[0];
+  return s || placeholder(p.type);
+}
+function placeholder(type){
+  const glyph = String(type).toLowerCase()==="gozluk"
+    ? `<path d='M40 96 a26 26 0 1 0 52 0 a26 26 0 1 0 -52 0 M108 96 a26 26 0 1 0 52 0 a26 26 0 1 0 -52 0' stroke='#C9A24B' stroke-width='2.5' fill='none'/>`
+    : `<circle cx='100' cy='100' r='46' stroke='#C9A24B' stroke-width='2.5' fill='none'/><path d='M100 100 L100 70 M100 100 L120 110' stroke='#C9A24B' stroke-width='2.5'/>`;
+  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='#1d1a14'/>${glyph}</svg>`);
+}
+
+/* ===== RENDER ===== */
+function render(){
+  if(!state.data) return;
+  renderDash(); renderProducts(); renderOrders(); renderOffers(); renderSettings();
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===state.view));
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
+  document.getElementById("view-"+state.view).classList.add("on");
+}
+function go(v){ state.view=v;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+  document.getElementById("view-"+v).classList.add("on");
+  window.scrollTo(0,0);
+}
+
+function renderDash(){
+  const ps=products();
+  const active=ps.filter(isActive), passive=ps.filter(p=>!isActive(p));
+  const orders=(state.data.orders.rows)||[], offers=(state.data.offers.rows)||[];
+  const newOrders=orders.filter(o=>String(o.Durum).trim()==="Yeni");
+  const newOffers=offers.filter(o=>String(o.Durum).trim()==="Yeni");
+  const stockUSD=active.reduce((s,p)=>s+(Number(p.priceUSD)||0)*(Number(p.qty)||1),0);
+  document.getElementById("view-dash").innerHTML = `
+    <div class="stats">
+      <div class="stat accent"><div class="n">${active.length}</div><div class="k">Satıştaki ürün</div></div>
+      <div class="stat"><div class="n">${newOrders.length}</div><div class="k">Bekleyen sipariş</div></div>
+      <div class="stat"><div class="n">${newOffers.length}</div><div class="k">Bekleyen teklif</div></div>
+      <div class="stat"><div class="n">${passive.length}</div><div class="k">Satılan / pasif</div></div>
+      <div class="stat"><div class="n" style="font-size:21px">${tl(stockUSD)}</div><div class="k">Stok değeri (≈)</div></div>
+    </div>
+    <div class="panel-grid">
+      <div class="block"><h3>Son siparişler</h3>${
+        orders.length? orders.slice(-5).reverse().map(o=>`<div class="mini"><div class="t">${esc(o.Urunler)||"—"}</div><div class="v">${tl(o.TutarUSD)}</div></div>`).join("")
+        : `<div class="empty">Henüz sipariş yok</div>`}</div>
+      <div class="block"><h3>Son teklifler</h3>${
+        offers.length? offers.slice(-5).reverse().map(o=>`<div class="mini"><div class="t">${esc(o.Urun)||"—"}</div><div class="v">${o.NakitTeklif?("₺"+o.NakitTeklif):(o.Turler||"—")}</div></div>`).join("")
+        : `<div class="empty">Henüz teklif yok</div>`}</div>
+    </div>`;
+}
+
+function renderProducts(q){
+  q=(q||"").toLowerCase();
+  let ps=products();
+  if(q) ps=ps.filter(p=>(String(p.name)+p.brand+p.id).toLowerCase().includes(q));
+  const list = ps.map(p=>{
+    const on=isActive(p);
+    return `<div class="prow">
+      <img class="th" src="${firstImg(p)}" alt=""/>
+      <div class="mid">
+        <div class="nm">${esc(p.name)||"(adsız)"}</div>
+        <div class="sub">${esc(p.brand)||""} · ${esc(p.id)} · ${Number(p.qty)||1} adet</div>
+        <div style="margin-top:6px"><span class="tagdot ${on?'tag-on':'tag-off'}">${on?'Satışta':'Satıldı'}</span></div>
+      </div>
+      <div class="acts">
+        <div class="pr">${usd(p.priceUSD)}</div>
+        <div class="row-btns">
+          <button class="btn btn-outline btn-sm" onclick="editProduct('${esc(p.id)}')">Düzenle</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleActive('${esc(p.id)}',${on})">${on?'Satıldı':'Aç'}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+  document.getElementById("view-products").innerHTML = `
+    <div class="toolbar">
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input id="prodSearch" placeholder="Ürün ara…" oninput="renderProducts(this.value)" value="${q?esc(q):''}"/></div>
+      <button class="btn btn-solid btn-sm" onclick="newProduct()">+ Yeni ürün</button>
+    </div>
+    ${ps.length? list : `<div class="empty">Ürün bulunamadı</div>`}`;
+  if(q){ const i=document.getElementById("prodSearch"); i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
+}
+
+function renderOrders(){
+  const orders=(state.data.orders.rows)||[];
+  const opts=["Yeni","Onaylandı","Kargolandı","Tamamlandı","İptal"];
+  document.getElementById("view-orders").innerHTML = `<h2 class="sec">Siparişler (${orders.length})</h2>` + (
+    orders.length? orders.slice().reverse().map(o=>`
+      <div class="ocard">
+        <div class="head">
+          <div><div class="date">${esc(o.Tarih)}</div><div class="title">${esc(o.Urunler)||"—"}</div></div>
+          <div class="amt">${tl(o.TutarUSD)}</div>
+        </div>
+        <div class="meta">
+          ${o.Musteri||o.Telefon?`<b>${esc(o.Musteri)||""}</b> ${esc(o.Telefon)||""}<br>`:""}
+          ${o.Adres?esc(o.Adres)+"<br>":""}
+          Sigorta: ${esc(o.Sigorta)||"Hayır"} · ${esc(o.ParaBirimi)||""}
+        </div>
+        <div style="margin-top:12px">
+          <select class="statSel s-${esc(String(o.Durum).trim())}" onchange="setStatus('Siparisler',${o._row},this.value,this)">
+            ${opts.map(s=>`<option ${String(o.Durum).trim()===s?'selected':''}>${s}</option>`).join("")}
+          </select>
+        </div>
+      </div>`).join("")
+    : `<div class="empty">Henüz sipariş yok</div>`);
+}
+
+function renderOffers(){
+  const offers=(state.data.offers.rows)||[];
+  const opts=["Yeni","Kabul","Red"];
+  document.getElementById("view-offers").innerHTML = `<h2 class="sec">Teklifler (${offers.length})</h2>` + (
+    offers.length? offers.slice().reverse().map(o=>`
+      <div class="ocard">
+        <div class="head">
+          <div><div class="date">${esc(o.Tarih)}</div><div class="title">${esc(o.Urun)||esc(o.UrunID)||"—"}</div></div>
+          <div class="amt">${o.NakitTeklif?("₺"+esc(o.NakitTeklif)):""}</div>
+        </div>
+        <div class="meta">
+          Tür: ${esc(o.Turler)||"—"}${o.TakasUrun?`<br>Takas: ${esc(o.TakasUrun)}`:""}${o.Not?`<br>Not: ${esc(o.Not)}`:""}
+          ${o.Telefon?`<br><b>${esc(o.Telefon)}</b>`:""}
+        </div>
+        <div style="margin-top:12px">
+          <select class="statSel s-${esc(String(o.Durum).trim())}" onchange="setStatus('Teklifler',${o._row},this.value,this)">
+            ${opts.map(s=>`<option ${String(o.Durum).trim()===s?'selected':''}>${s}</option>`).join("")}
+          </select>
+        </div>
+      </div>`).join("")
+    : `<div class="empty">Henüz teklif yok</div>`);
+}
+
+function renderSettings(){
+  const s=(state.data.settings)||{};
+  document.getElementById("view-settings").innerHTML = `
+    <h2 class="sec">Mağaza Ayarları</h2>
+    <div class="fields">
+      <div class="field"><label>Dolar kuru (usdTry) <span class="hint">1 USD kaç TL</span></label>
+        <input id="set-usdTry" type="number" step="0.1" value="${esc(s.usdTry)||41}"/></div>
+      <div class="field"><label>Marka adı (brand)</label>
+        <input id="set-brand" value="${esc(s.brand)||"ERSA"}"/></div>
+      <div class="field"><label>WhatsApp <span class="hint">90 ile, ör: 905xxxxxxxxx</span></label>
+        <input id="set-whatsapp" value="${esc(s.whatsapp)||""}"/></div>
+      <div class="field"><label>Kargo ücretsiz (freeShipping)</label>
+        <select id="set-freeShipping"><option ${tru(s.freeShipping)?'selected':''}>TRUE</option><option ${!tru(s.freeShipping)?'selected':''}>FALSE</option></select></div>
+    </div>
+    <button class="btn btn-solid btn-full" style="margin-top:16px" onclick="saveSettings()">Ayarları kaydet</button>
+    <h2 class="sec" style="margin-top:28px">Güvenlik</h2>
+    <div class="fields">
+      <div class="field"><label>Panel PIN değiştir (adminPin)</label>
+        <input id="set-adminPin" type="text" placeholder="yeni PIN"/></div>
+    </div>
+    <button class="btn btn-outline btn-full" style="margin-top:16px" onclick="savePin()">PIN'i değiştir</button>`;
+}
+
+/* ===== ÜRÜN düzenle / ekle ===== */
+function buildProductForm(p){
+  const headers=productHeaders();
+  const types=["saat","gozluk"], conds=["Yeni","Çok iyi","İyi"], bools=["TRUE","FALSE"];
+  return headers.map(h=>{
+    const key=h.toLowerCase();
+    const val = (p && (h in p)) ? p[h] : "";
+    let input;
+    if(key==="id") input=`<input id="f-${h}" value="${esc(val)}" ${p&&p._editing?'readonly':''}/>`;
+    else if(key==="type") input=`<select id="f-${h}">${types.map(t=>`<option ${String(val).toLowerCase()===t?'selected':''}>${t}</option>`).join("")}</select>`;
+    else if(key==="condition") input=`<select id="f-${h}">${conds.map(c=>`<option ${val===c?'selected':''}>${c}</option>`).join("")}</select>`;
+    else if(key==="active") input=`<select id="f-${h}">${bools.map(b=>`<option ${(String(val).toUpperCase()===b)||(val===""&&b==="TRUE")?'selected':''}>${b}</option>`).join("")}</select>`;
+    else if(key==="listedat") input=`<input id="f-${h}" type="date" value="${esc(String(val).slice(0,10))}"/>`;
+    else if(key==="priceusd"||key==="qty") input=`<input id="f-${h}" type="number" value="${esc(val)}"/>`;
+    else if(key==="images"||key==="desc") input=`<textarea id="f-${h}" rows="2">${esc(val)}</textarea>`;
+    else input=`<input id="f-${h}" value="${esc(val)}"/>`;
+    return `<div class="mfield"><label>${esc(h)}</label>${input}</div>`;
+  }).join("");
+}
+function editProduct(id){
+  const p=products().find(x=>String(x.id)===String(id));
+  if(!p) return;
+  state.editId=id;
+  const pe=Object.assign({_editing:true},p);
+  document.getElementById("modalTitle").textContent="Ürünü düzenle";
+  document.getElementById("modalBody").innerHTML=buildProductForm(pe);
+  openModal();
+}
+function newProduct(){
+  state.editId=null;
+  const blank={ _editing:false, id:suggestId(), listedAt:today(), active:"TRUE", qty:1, type:"saat", condition:"Yeni" };
+  document.getElementById("modalTitle").textContent="Yeni ürün";
+  document.getElementById("modalBody").innerHTML=buildProductForm(blank);
+  openModal();
+}
+function suggestId(){ return "p"+Date.now().toString().slice(-6); }
+function today(){ const d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+
+async function saveProductForm(){
+  const headers=productHeaders();
+  const row={};
+  headers.forEach(h=>{ const el=document.getElementById("f-"+h); if(el) row[h]=el.value; });
+  if(!String(row.id||"").trim()){ toast("id boş olamaz"); return; }
+  document.getElementById("modalSave").textContent="Kaydediliyor…";
+  const res=await post({action:"save_product",row:row});
+  document.getElementById("modalSave").textContent="Kaydet";
+  if(res.ok===false){ toast(res.error||"Hata"); return; }
+  closeModal(); toast("Ürün kaydedildi ✓"); await refresh();
+}
+async function toggleActive(id,currentlyOn){
+  toast(currentlyOn?"Satıldı işaretleniyor…":"Açılıyor…");
+  const res=await post({action:"save_product",row:{id:id,active:currentlyOn?"FALSE":"TRUE"}});
+  if(res.ok===false){ toast(res.error||"Hata"); return; }
+  await refresh(); toast("Güncellendi ✓");
+}
+
+/* ===== sipariş/teklif durumu ===== */
+async function setStatus(sheet,row,status,el){
+  if(el){ el.className="statSel s-"+status; }
+  const res=await post({action:"set_status",sheet:sheet,row:row,status:status});
+  if(res.ok===false){ toast(res.error||"Hata"); return; }
+  // yerel veriyi de güncelle (yeniden çekmeden)
+  const arr = sheet==="Siparisler"? state.data.orders.rows : state.data.offers.rows;
+  const it = arr.find(x=>x._row===row); if(it) it.Durum=status;
+  renderDash();
+  toast("Durum: "+status);
+}
+
+/* ===== ayarlar ===== */
+async function saveSettings(){
+  const keys=["usdTry","brand","whatsapp","freeShipping"];
+  for(const k of keys){ const el=document.getElementById("set-"+k); if(el) await post({action:"save_setting",key:k,value:el.value}); }
+  toast("Ayarlar kaydedildi ✓"); await refresh();
+}
+async function savePin(){
+  const v=document.getElementById("set-adminPin").value.trim();
+  if(!v){ toast("Yeni PIN gir"); return; }
+  const res=await post({action:"save_setting",key:"adminPin",value:v});
+  if(res.ok===false){ toast(res.error||"Hata"); return; }
+  state.pin=v; sessionStorage.setItem("ersa_pin",v);
+  toast("PIN değiştirildi ✓");
+}
+
+/* ===== MODAL / TOAST ===== */
+function openModal(){ document.getElementById("scrim").classList.add("on"); document.getElementById("modal").classList.add("on"); }
+function closeModal(){ document.getElementById("scrim").classList.remove("on"); document.getElementById("modal").classList.remove("on"); }
+let toastT;
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2200); }
+
+/* ===== util ===== */
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function tru(v){ const s=String(v).trim().toLowerCase(); return !(s==="false"||s==="0"||s==="hayır"||s==="no"||s===""); }
+
+/* ===== BAĞLAMA ===== */
+document.getElementById("loginBtn").onclick=login;
+document.getElementById("pinInput").addEventListener("keydown",e=>{ if(e.key==="Enter") login(); });
+document.getElementById("tabs").querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.v));
+document.getElementById("modalSave").onclick=saveProductForm;
+
+/* otomatik giriş (oturum) */
+(function(){
+  const saved=sessionStorage.getItem("ersa_pin");
+  if(saved){ state.pin=saved; document.getElementById("pinInput").value=saved; login(); }
+})();
+</script>
+</body>
+</html>
