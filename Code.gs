@@ -1,11 +1,26 @@
 /**
- * ERSA · Saat & Gözlük — Apps Script backend (mağaza + yönetici panel)
- * Kurulum sonrası DEĞİŞİKLİK yaptıysan: Dağıt → Dağıtımları yönet → ✏️ →
- * Sürüm: "Yeni sürüm" → Dağıt  (URL aynı kalır)
+ * ERSA · PANEL backend (AYRI Apps Script — "pasha" tablosuna ID ile bağlanır)
  *
- * PANEL İÇİN: Ayarlar sayfasına bir satır ekle →  adminPin | <3579Yokkuz>
- * Hiçbir veri SİLİNMEZ; her şey eklenir/güncellenir.
+ * KURULUM:
+ *  1) "pasha" tablosunu aç, adres çubuğundaki ID'yi kopyala:
+ *     docs.google.com/spreadsheets/d/<<<BU_KISIM_SHEET_ID>>>/edit
+ *  2) Aşağıdaki SHEET_ID'ye yapıştır.
+ *  3) Dağıt → Yeni dağıtım → Web uygulaması
+ *       - Şu kişi olarak çalıştır: BEN
+ *       - Erişim: Herkes
+ *  4) Verilen /exec URL'ini panel/index.html içindeki CONFIG.SHEET_API'ye yaz.
+ *  5) "pasha" tablosundaki Ayarlar sayfasına satır:  adminPin | <gizli-pin>
+ *
+ * Mağaza backend'i ayrı kalır; ikisi de aynı tabloyu okur/yazar. Veri SİLİNMEZ.
  */
+
+var SHEET_ID = "1JBu85wcx3nO6My8OghFyEjR1mTXvhV1HkZrKjEaeIdo";   // pasha tablosu
+function SS_(){ return SpreadsheetApp.openById(SHEET_ID); }
+
+// İlk giriş için gömülü PIN. Panelden Ayarlar > adminPin ile değiştirince bu geçersiz olur.
+// !! Bu dosyayı herkese açık bir repoda PAYLAŞMA (PIN görünür olur). Production'da değiştir.
+var DEFAULT_PIN = "1234";
+
 
 var SHEETS = { products: 'Urunler', orders: 'Siparisler', offers: 'Teklifler', settings: 'Ayarlar' };
 var PUBLIC_SETTINGS = ['usdTry', 'brand', 'whatsapp', 'freeShipping'];
@@ -62,7 +77,7 @@ function doPost(e) {
 
 /* ============ MAĞAZA: ürünler ============ */
 function getProducts_(includeInactive) {
-  var sh = SpreadsheetApp.getActive().getSheetByName(SHEETS.products);
+  var sh = SS_().getSheetByName(SHEETS.products);
   if (!sh) return [];
   var values = sh.getDataRange().getValues();
   if (values.length < 2) return [];
@@ -97,7 +112,7 @@ function getProducts_(includeInactive) {
 
 /* ============ PANEL: ham satır okuma ============ */
 function getSheetObjects_(name) {
-  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  var sh = SS_().getSheetByName(name);
   if (!sh) return { headers: [], rows: [] };
   var values = sh.getDataRange().getValues();
   if (values.length < 1) return { headers: [], rows: [] };
@@ -118,7 +133,7 @@ function getSheetObjects_(name) {
 
 /* ============ PANEL: ürün kaydet (upsert) ============ */
 function saveProduct_(d) {
-  var ss = SpreadsheetApp.getActive();
+  var ss = SS_();
   var sh = ss.getSheetByName(SHEETS.products) || ss.insertSheet(SHEETS.products);
   var values = sh.getDataRange().getValues();
   var headers = values[0].map(function (h) { return String(h).trim(); });
@@ -147,7 +162,7 @@ function saveProduct_(d) {
 function setStatus_(d) {
   var name = d.sheet;
   if ([SHEETS.orders, SHEETS.offers].indexOf(name) < 0) return json_({ ok: false, error: 'geçersiz sheet' });
-  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  var sh = SS_().getSheetByName(name);
   if (!sh) return json_({ ok: false, error: 'sheet yok' });
   var headers = sh.getDataRange().getValues()[0].map(function (h) { return String(h).trim(); });
   var col = headers.indexOf('Durum');
@@ -196,7 +211,7 @@ function addOffer_(d) {
 
 /* ============ AYARLAR ============ */
 function getSettings_() {
-  var sh = SpreadsheetApp.getActive().getSheetByName(SHEETS.settings);
+  var sh = SS_().getSheetByName(SHEETS.settings);
   var s = {};
   if (!sh) return s;
   var v = sh.getDataRange().getValues();
@@ -209,8 +224,7 @@ function getPublicSettings_() {
   return out;
 }
 function checkPin_(pin) {
-  var real = String(getSettings_().adminPin || '').trim();
-  if (!real) return 'NO_PIN';
+  var real = String(getSettings_().adminPin || '').trim() || DEFAULT_PIN;
   return String(pin || '').trim() === real ? 'OK' : 'BAD';
 }
 
@@ -231,7 +245,7 @@ function fmtDate_(v) {
   return String(v).trim();
 }
 function getOrCreate_(name, headers) {
-  var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(name);
+  var ss = SS_(), sh = ss.getSheetByName(name);
   if (!sh) { sh = ss.insertSheet(name); sh.appendRow(headers); }
   return sh;
 }
