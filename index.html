@@ -310,6 +310,7 @@ img{display:block;max-width:100%}
       <a class="sb-item" data-page="referral"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5"/><path d="M16 11l2 2 4-4"/></svg>Referans <span class="badge">Yeni</span></a>
       <a class="sb-item" data-page="chat"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-5A8 8 0 1 1 21 12z"/></svg>Sohbet</a>
       <div class="sb-label">Sistem</div>
+      <a class="sb-item" data-page="users"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/><circle cx="18" cy="9" r="2.5"/><path d="M16.5 14.2c2.6.3 4.5 2 4.5 4.8"/></svg>Kullanıcılar</a>
       <a class="sb-item" data-page="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.3-1.3L13.7 2h-3.4L9.7 4.5A7 7 0 0 0 7.4 5.8l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.3 1.3l.6 2.5h3.4l.6-2.5a7 7 0 0 0 2.3-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>Ayarlar</a>
     </nav>
   </aside>
@@ -332,6 +333,7 @@ img{display:block;max-width:100%}
       <section class="page" id="page-orders"></section>
       <section class="page" id="page-offers"></section>
       <section class="page" id="page-settings"></section>
+      <section class="page" id="page-users"></section>
       <section class="page" id="page-catalog"></section>
 
       <!-- REFERANS (statik tasarım) -->
@@ -456,6 +458,7 @@ function products(){ return (state.data&&state.data.products&&state.data.product
 function pHeaders(){ return (state.data&&state.data.products&&state.data.products.headers)||[]; }
 function orders(){ return (state.data&&state.data.orders&&state.data.orders.rows)||[]; }
 function offers(){ return (state.data&&state.data.offers&&state.data.offers.rows)||[]; }
+function users(){ return (state.data&&state.data.users&&state.data.users.rows)||[]; }
 function isActive(p){ const v=String(p.active).trim().toLowerCase(); return !(v==="false"||v==="0"||v==="hayır"||v==="hayir"||v==="no"||v===""); }
 function firstImg(p){ const s=String(p.images||"").split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean)[0]; return s||placeholder(p.type); }
 function placeholder(type){
@@ -478,11 +481,11 @@ function go(v){
   document.querySelectorAll(".sb-item").forEach(i=>i.classList.toggle("on",i.dataset.page===v));
   closeSb(); window.scrollTo(0,0);
   if(v==="dash")renderDash(); if(v==="products")renderProducts();
-  if(v==="orders")renderOrders(); if(v==="offers")renderOffers(); if(v==="settings")renderSettings();
+  if(v==="orders")renderOrders(); if(v==="offers")renderOffers(); if(v==="settings")renderSettings(); if(v==="users")renderUsers();
   if(v==="catalog")renderCatalog();
 }
 function render(){ // tümünü tazele
-  renderDash();renderProducts();renderOrders();renderOffers();renderSettings();updateBadges();
+  renderDash();renderProducts();renderOrders();renderOffers();renderSettings();renderUsers();updateBadges();
 }
 function updateBadges(){
   const no=orders().filter(o=>String(o.Durum).trim()==="Yeni").length;
@@ -622,9 +625,11 @@ function buildForm(p){
     return `<div class="mfield"><label>${esc(h)}</label>${inp}</div>`;}).join("");
 }
 function editProduct(id){const p=products().find(x=>String(x.id)===String(id));if(!p)return;
+  document.getElementById("modalSave").onclick=saveProductForm;
   document.getElementById("modalTitle").textContent="Ürünü düzenle";
   document.getElementById("modalBody").innerHTML=buildForm(Object.assign({_edit:true},p)); openModal();}
 function newProduct(){
+  document.getElementById("modalSave").onclick=saveProductForm;
   document.getElementById("modalTitle").textContent="Yeni ürün";
   document.getElementById("modalBody").innerHTML=buildForm({_edit:false,id:"p"+Date.now().toString().slice(-6),listedAt:today(),active:"TRUE",qty:1,type:"saat",condition:"Yeni"});
   openModal();}
@@ -637,6 +642,60 @@ async function saveProductForm(){
   document.getElementById("modalSave").textContent="Kaydet";
   if(res.ok===false){toast(res.error||"Hata");return;}
   closeModal();toast("Ürün kaydedildi ✓");await loadAdmin();render();
+}
+
+/* ===== KULLANICILAR ===== */
+function renderUsers(){
+  const us=users();
+  const rows=us.map(u=>{const on=String(u.aktif).toLowerCase()!=="false"&&String(u.aktif).toLowerCase()!=="hayır"&&u.aktif!==0;
+    return `<tr>
+    <td><div class="u-cell"><div class="u-av" style="display:grid;place-items:center;background:var(--primary-soft);color:var(--primary);font-weight:700">${esc(String(u.kod||"?").slice(0,2).toUpperCase())}</div><div><div class="u-name">${esc(u.ad)||"(adsız)"}</div><div class="u-mail">${esc(u.kod)}</div></div></div></td>
+    <td><span class="chip ${on?'ok':'off'}">${on?'Aktif':'Pasif'}</span></td>
+    <td>${esc(String(u.eklendi||"").slice(0,10))}</td>
+    <td><div class="row-acts"><button class="btn btn-soft btn-sm" onclick="editUser('${esc(u.kod)}')">Düzenle</button><button class="btn btn-danger btn-sm" onclick="deleteUserRow('${esc(u.kod)}')">Sil</button></div></td>
+  </tr>`}).join("");
+  document.getElementById("page-users").innerHTML=`
+    <div class="page-head"><div><h1>Kullanıcılar</h1><div class="crumb">Yönetim / <b>Kullanıcılar</b></div></div></div>
+    <div class="card"><div class="card-head"><h3>Bayi / Müşteri Girişleri (${us.length})</h3><div class="tbl-tools">
+      <button class="btn btn-primary btn-sm" onclick="newUser()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Yeni kullanıcı</button></div></div>
+      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Kullanıcı</th><th>Durum</th><th>Eklendi</th><th style="text-align:right">İşlem</th></tr></thead>
+      <tbody>${us.length?rows:`<tr><td colspan="4"><div class="empty">Henüz kullanıcı yok — "Yeni kullanıcı" ile ekle</div></td></tr>`}</tbody></table></div></div>`;
+}
+function userForm(u){
+  return `
+    <div class="mfield"><label>Kod (kullanıcı adı)</label><input id="u-kod" value="${esc(u.kod||"")}" ${u._edit?'readonly':''} placeholder="ör: BAYI01"/></div>
+    <div class="mfield"><label>Şifre ${u._edit?'<span style="color:var(--muted)">(boş bırak = değişmez)</span>':''}</label><input id="u-sifre" value="" placeholder="${u._edit?'••••':'şifre'}"/></div>
+    <div class="mfield"><label>Ad / Firma</label><input id="u-ad" value="${esc(u.ad||"")}" placeholder="ör: Ahmet Ticaret"/></div>
+    <div class="mfield"><label>Durum</label><select id="u-aktif"><option value="TRUE" ${String(u.aktif).toLowerCase()!=="false"?'selected':''}>Aktif</option><option value="FALSE" ${String(u.aktif).toLowerCase()==="false"?'selected':''}>Pasif</option></select></div>`;
+}
+function newUser(){
+  document.getElementById("modalSave").onclick=saveUserForm;
+  document.getElementById("modalTitle").textContent="Yeni kullanıcı";
+  document.getElementById("modalBody").innerHTML=userForm({_edit:false,aktif:"TRUE"}); openModal();
+}
+function editUser(kod){
+  const u=users().find(x=>String(x.kod)===String(kod));if(!u)return;
+  document.getElementById("modalSave").onclick=saveUserForm;
+  document.getElementById("modalTitle").textContent="Kullanıcıyı düzenle";
+  document.getElementById("modalBody").innerHTML=userForm(Object.assign({_edit:true},u)); openModal();
+}
+async function saveUserForm(){
+  const kod=document.getElementById("u-kod").value.trim();
+  if(!kod){toast("Kod boş olamaz");return;}
+  const user={kod:kod, ad:document.getElementById("u-ad").value.trim(), aktif:document.getElementById("u-aktif").value};
+  const sifre=document.getElementById("u-sifre").value;
+  if(sifre) user.sifre=sifre;
+  document.getElementById("modalSave").textContent="Kaydediliyor…";
+  const res=await post({action:"save_user",user:user});
+  document.getElementById("modalSave").textContent="Kaydet";
+  if(res.ok===false){toast(res.error||"Hata");return;}
+  closeModal();toast("Kullanıcı kaydedildi ✓");await loadAdmin();render();
+}
+async function deleteUserRow(kod){
+  if(!confirm("Bu kullanıcı silinsin mi?\n("+kod+")\nGiriş yapamaz hale gelir."))return;
+  toast("Siliniyor…");const res=await post({action:"delete_user",kod:kod});
+  if(res.ok===false){toast(res.error||"Hata");return;}
+  await loadAdmin();render();toast("Kullanıcı silindi ✓");
 }
 async function toggleActive(id,on){toast(on?"Satıldı işaretleniyor…":"Açılıyor…");
   const res=await post({action:"save_product",row:{id:id,active:on?"FALSE":"TRUE"}});
