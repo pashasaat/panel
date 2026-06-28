@@ -884,22 +884,24 @@ async function catRemoveBg(id){
   }catch(e){toast("Arka plan silinemedi: "+((e&&e.message)||e)+" — istersen 'Orijinali kullan' dene");}
 }
 function buildImgPrompt(x){
-  var label=((x.modelCode||"")+"-"+(x.colorCode||"")).replace(/^-|-$/g,"");
   var nExtra=(x.extras||[]).length;
-  var detayY = nExtra>0
-    ? " Sana verilen diğer "+nExtra+" detay fotoğrafını AYNI görselin içine küçük kareler (inset) halinde köşelere yerleştir: ana ürün büyük ve merkezde dursun, detay görselleri belirgin biçimde daha küçük ve kenarlarda olsun. Tek bir birleşik kompozisyon üret."
-    : "";
   if(x.source){
-    return "Sana verilen ürün fotoğraf(lar)ını tek bir profesyonel e-ticaret görseline dönüştür. "
-      +"ÇOK ÖNEMLİ: İLK (ana) fotoğraftaki ürünün AÇISINI, YÖNÜNÜ, bakış perspektifini ve pozunu AYNEN koru — yandan çekildiyse yandan göster, açılı ise açılı kalsın; ürünü döndürme, çevirme, önden/düz gösterme. "
-      +"Ürünün kendisini, biçimini, rengini ve modelini değiştirme; yalnızca arka planı tamamen temiz saf beyaz (#FFFFFF) stüdyo zeminine çevir, yumuşak doğal gölge ekle, ürünü ortala ve netleştir."
-      +detayY
-      +(label?(" Görselin altına küçük sade metin etiketi: "+label+"."):"")
-      +" Marka logosu ekleme.";
+    var p=
+"REFERANS GÖRSELİNİN KATI KORUMASI VE ARKA PLAN DEĞİŞİMİ\n"+
+"Hedef: Gönderilen referans görselindeki ürünü (gözlük) piksellerine, açısına ve aydınlatmasına kadar %100 oranında korumak, sadece arka planı temizlemek.\n"+
+"Talimatlar:\n"+
+"1.  MEVCUT NESNEYİ KORU: Giriş görselindeki gözlük nesnesini piksel düzeyinde bir doğrulukla izole et. Nesnenin orijinal biçimini, çerçeve yapısını, cam rengini, üzerindeki tüm marka logolarını, yazılarını ve detaylarını (sap kısmındaki marka ve model işaretleri dahil) DEĞİŞTİRME. Ürünü yeniden oluşturma, döndürme veya yeniden hizalama. Ürün orijinal görselde nasıl duruyorsa (yan, açılı veya profilden) o duruşu ve açıyı birebir koru; ürünü asla öne veya başka bir yöne çevirme.\n"+
+"2.  ARKA PLANI KALDIR: Orijinal görseldeki mevcut arka planı tamamen ve temiz bir şekilde kaldır.\n"+
+"3.  YENİ ARKA PLAN EKLE: İzole edilmiş orijinal ürünü, tamamen pürüzsüz, saf beyaz (#FFFFFF) profesyonel bir stüdyo zeminine yerleştir.\n"+
+"4.  GÖLGE EKLEME: Ürünün altına, saf beyaz zemin üzerinde doğal ve yumuşak bir temas gölgesi ekle (yumuşak drop shadow).\n"+
+"5.  ORİJİNAL AYDINLATMA VE NETLİK: Ürünün kendi üzerindeki aydınlatma ve netlik özelliklerini orijinalindeki gibi muhafaza et.";
+    if(nExtra>0){
+      p+="\n\nEK: Sana verilen diğer "+nExtra+" detay fotoğrafını da aynı katı koruma kurallarıyla (her birini birebir koruyarak) ana görselin içine küçük kareler (inset) halinde köşelere yerleştir; ana ürün büyük ve merkezde kalsın.";
+    }
+    return p;
   }
   var desc=[x.brand,x.frameColor,x.frameShape,"çerçeveli gözlük"].filter(Boolean).join(" ")+(x.lensColor?(", "+x.lensColor+" cam"):"");
-  return "Profesyonel e-ticaret ürün fotoğrafı: "+desc+". Tamamen temiz saf beyaz (#FFFFFF) stüdyo arka planı, yumuşak gölgeler, ürün ortalanmış, yüksek çözünürlük, gerçekçi."
-    +(label?(" Görselin altına küçük sade metin etiketi: "+label+"."):"")+" Marka logosu ekleme.";
+  return "Profesyonel e-ticaret ürün fotoğrafı: "+desc+". Tamamen temiz saf beyaz (#FFFFFF) stüdyo arka planı, yumuşak gölgeler, ürün ortalanmış, yüksek çözünürlük, gerçekçi.";
 }
 async function catGenImage(id){
   const it=state.catItems.find(x=>x._id===id);if(!it)return;
