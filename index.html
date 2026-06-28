@@ -715,7 +715,7 @@ async function savePin(){const v=document.getElementById("set-adminPin").value.t
   state.pin=v;sessionStorage.setItem("ersa_pin",v);toast("PIN değiştirildi ✓");}
 
 /* ===== KATALOG (AI) ===== */
-state.catItems=null; state.catFile=null; state.catBrand=null;
+state.catItems=null; state.catFile=null; state.catBrand=null; state.catIsImage=false;
 function renderCatalog(){
   const el=document.getElementById("page-catalog");
   if(state.catItems){ renderCatalogResults(); return; }
@@ -726,9 +726,9 @@ function renderCatalog(){
     <div class="card card-pad">
       <div class="drop" id="drop">
         <div class="di"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></div>
-        <h3 id="dropTitle">PDF kataloğu yükle</h3>
-        <p id="dropSub">Tıkla veya sürükle-bırak · yalnızca .pdf</p>
-        <input id="pdfInput" type="file" accept="application/pdf" style="display:none"/>
+        <h3 id="dropTitle">Katalog yükle (PDF veya görsel)</h3>
+        <p id="dropSub">Tıkla veya sürükle-bırak · .pdf, .png, .jpg</p>
+        <input id="pdfInput" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" style="display:none"/>
       </div>
       <button class="btn btn-primary" id="parseBtn" style="margin-top:16px;display:none" onclick="parseCatalog()">Ayrıştır</button>
     </div>
@@ -741,14 +741,18 @@ function renderCatalog(){
   drop.ondrop=e=>{e.preventDefault();drop.classList.remove("drag");pickPdf(e.dataTransfer.files[0]);};
 }
 function pickPdf(f){
-  if(!f){return;} if(f.type!=="application/pdf"){toast("Sadece PDF");return;}
+  if(!f){return;}
+  const okPdf=f.type==="application/pdf";
+  const okImg=/^image\/(png|jpe?g|webp)$/.test(f.type)||/\.(png|jpe?g|webp)$/i.test(f.name);
+  if(!okPdf&&!okImg){toast("PDF veya görsel (PNG/JPG) seç");return;}
   state.catFile=f;
+  state.catIsImage=okImg&&!okPdf;
   document.getElementById("dropTitle").textContent=f.name;
-  document.getElementById("dropSub").textContent=(f.size/1024/1024).toFixed(1)+" MB · hazır";
+  document.getElementById("dropSub").textContent=(f.size/1024/1024).toFixed(1)+" MB · "+(state.catIsImage?"görsel":"PDF")+" hazır";
   document.getElementById("parseBtn").style.display="";
 }
 async function parseCatalog(){
-  if(!state.catFile){toast("Önce PDF seç");return;}
+  if(!state.catFile){toast("Önce katalog seç (PDF/görsel)");return;}
   document.getElementById("parseBtn").style.display="none";
   const busy=document.getElementById("catBusy");
   busy.style.display="";
@@ -757,36 +761,42 @@ async function parseCatalog(){
   const CHUNK=10;
   let all=[];
   try{
-    const buf=await state.catFile.arrayBuffer();
     let chunks=[];
-    // pdf-lib varsa 10'lu sayfalara böl
-    if(window.PDFLib&&window.PDFLib.PDFDocument){
-      const src=await window.PDFLib.PDFDocument.load(buf,{ignoreEncryption:true});
-      const total=src.getPageCount();
-      for(let s=0;s<total;s+=CHUNK){
-        const sub=await window.PDFLib.PDFDocument.create();
-        const idx=[];for(let i=s;i<Math.min(s+CHUNK,total);i++)idx.push(i);
-        const pages=await sub.copyPages(src,idx);
-        pages.forEach(p=>sub.addPage(p));
-        const b64=await sub.saveAsBase64({dataUri:false});
-        chunks.push({b64:b64,from:s+1,to:Math.min(s+CHUNK,total),total:total});
-      }
-    }else{
-      // pdf-lib yoksa tek parça gönder
+    const mime=state.catFile.type||"";
+    if(state.catIsImage){
+      // GÖRSEL: tek parça, image bloğu olarak gönder
       const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(state.catFile);});
-      chunks.push({b64:b64,from:1,to:0,total:0});
+      chunks.push({b64:b64,from:1,to:0,total:0,mime:mime||"image/jpeg"});
+    }else{
+      const buf=await state.catFile.arrayBuffer();
+      // pdf-lib varsa 10'lu sayfalara böl
+      if(window.PDFLib&&window.PDFLib.PDFDocument){
+        const src=await window.PDFLib.PDFDocument.load(buf,{ignoreEncryption:true});
+        const total=src.getPageCount();
+        for(let s=0;s<total;s+=CHUNK){
+          const sub=await window.PDFLib.PDFDocument.create();
+          const idx=[];for(let i=s;i<Math.min(s+CHUNK,total);i++)idx.push(i);
+          const pages=await sub.copyPages(src,idx);
+          pages.forEach(p=>sub.addPage(p));
+          const b64=await sub.saveAsBase64({dataUri:false});
+          chunks.push({b64:b64,from:s+1,to:Math.min(s+CHUNK,total),total:total,mime:"application/pdf"});
+        }
+      }else{
+        const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(state.catFile);});
+        chunks.push({b64:b64,from:1,to:0,total:0,mime:"application/pdf"});
+      }
     }
     for(let i=0;i<chunks.length;i++){
       const c=chunks[i];
       setProg(c.total?`Sayfa ${c.from}-${c.to} işleniyor… (${i+1}/${chunks.length})`:"AI kataloğu okuyor…");
-      const res=await post({action:"parse_catalog",pdf:c.b64,filename:state.catFile.name,brand:state.catBrand||"",page_from:c.from,page_to:c.to});
+      const res=await post({action:"parse_catalog",pdf:c.b64,mime:c.mime,filename:state.catFile.name,brand:state.catBrand||"",page_from:c.from,page_to:c.to});
       if(res.ok===false){toast(res.error||"Bir parça başarısız ("+c.from+"-"+c.to+")");continue;}
       if(res.items&&res.items.length) all=all.concat(res.items);
       setProg(`${all.length} model bulundu… (${i+1}/${chunks.length})`);
     }
   }catch(e){
     busy.style.display="none";document.getElementById("parseBtn").style.display="";
-    toast("PDF işlenemedi: "+e.message);return;
+    toast("Katalog işlenemedi: "+e.message);return;
   }
   busy.style.display="none";
   if(!all.length){toast("Hiç model bulunamadı");document.getElementById("parseBtn").style.display="";return;}
@@ -894,7 +904,8 @@ function buildImgPrompt(x){
 "2.  ARKA PLANI KALDIR: Orijinal görseldeki mevcut arka planı tamamen ve temiz bir şekilde kaldır.\n"+
 "3.  YENİ ARKA PLAN EKLE: İzole edilmiş orijinal ürünü, tamamen pürüzsüz, saf beyaz (#FFFFFF) profesyonel bir stüdyo zeminine yerleştir.\n"+
 "4.  GÖLGE EKLEME: Ürünün altına, saf beyaz zemin üzerinde doğal ve yumuşak bir temas gölgesi ekle (yumuşak drop shadow).\n"+
-"5.  ORİJİNAL AYDINLATMA VE NETLİK: Ürünün kendi üzerindeki aydınlatma ve netlik özelliklerini orijinalindeki gibi muhafaza et.";
+"5.  ORİJİNAL AYDINLATMA VE NETLİK: Ürünün kendi üzerindeki aydınlatma ve netlik özelliklerini orijinalindeki gibi muhafaza et.\n"+
+"Bu bir yüksek çözünürlüklü ürün görselidir. Lütfen piksel yapısını bozmadan, sadece arka planı şeffaflaştırarak veya saf beyaza boyayarak orijinal dosyayı koru.";
     if(nExtra>0){
       p+="\n\nEK: Sana verilen diğer "+nExtra+" detay fotoğrafını da aynı katı koruma kurallarıyla (her birini birebir koruyarak) ana görselin içine küçük kareler (inset) halinde köşelere yerleştir; ana ürün büyük ve merkezde kalsın.";
     }
@@ -933,7 +944,7 @@ async function addAllCatalog(){const items=state.catItems||[];if(!items.length)r
   toast("Tümü ekleniyor…");let n=0;
   for(const it of items){const res=await post({action:"save_product",row:catToRow(it)});if(res.ok!==false)n++;}
   await loadAdmin();render();toast(n+" ürün eklendi ✓");}
-function resetCatalog(){state.catItems=null;state.catFile=null;renderCatalog();}
+function resetCatalog(){state.catItems=null;state.catFile=null;state.catIsImage=false;renderCatalog();}
 
 
 function openConv(el,name,color,ini){document.querySelectorAll(".conv").forEach(c=>c.classList.remove("on"));el.classList.add("on");
