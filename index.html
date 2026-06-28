@@ -277,6 +277,19 @@ img{display:block;max-width:100%}
   .cat-item{grid-template-columns:1fr}.cat-fields{grid-template-columns:1fr}
   .tbl thead{display:none}.tbl tbody td{display:block;padding:6px 18px;border:none}
   .tbl tbody tr{display:block;border-bottom:1px solid var(--line);padding:10px 0}}
+/* ---- KIRPMA ARACI ---- */
+.crop-overlay{position:fixed;inset:0;z-index:200;background:rgba(20,18,30,.6);display:none;align-items:center;justify-content:center;padding:16px}
+.crop-overlay.on{display:flex}
+.crop-box{background:#fff;border-radius:16px;width:100%;max-width:820px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.crop-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.crop-head h3{margin:0;font-size:17px;color:var(--heading)}
+.crop-head .x{border:none;background:none;font-size:24px;color:var(--muted);cursor:pointer;line-height:1}
+.crop-tools{display:flex;align-items:center;gap:12px;padding:10px 18px;flex-wrap:wrap}
+.crop-tools .muted{font-size:12.5px}
+.crop-stage{position:relative;flex:1;overflow:auto;background:#F1F0F5;display:flex;align-items:center;justify-content:center;min-height:240px;touch-action:none;user-select:none}
+.crop-stage img{max-width:100%;max-height:62vh;display:block;pointer-events:none}
+.crop-sel{position:absolute;border:2px solid var(--primary);background:rgba(219,58,76,.14);box-shadow:0 0 0 9999px rgba(20,18,30,.28);pointer-events:none}
+.crop-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -408,6 +421,31 @@ img{display:block;max-width:100%}
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Vazgeç</button><button class="btn btn-primary" id="modalSave">Kaydet</button></div>
 </div>
 <div id="toast"></div>
+
+<!-- KIRPMA ARACI -->
+<div class="crop-overlay" id="cropModal">
+  <div class="crop-box">
+    <div class="crop-head">
+      <h3 id="cropTitle">Sayfadan kes</h3>
+      <button class="x" onclick="closeCrop()">×</button>
+    </div>
+    <div class="crop-tools">
+      <input type="file" id="cropFile" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="cropLoadFile(this)"/>
+      <button class="btn btn-soft btn-sm" onclick="document.getElementById('cropFile').click()">PNG sayfa yükle / değiştir</button>
+      <span class="muted" id="cropHint">Önce sayfayı yükle, sonra fareyle ürünün üzerine kutu çiz.</span>
+    </div>
+    <div class="crop-stage" id="cropStage">
+      <img id="cropImg" draggable="false"/>
+      <div class="crop-sel" id="cropSel" style="display:none"></div>
+    </div>
+    <div class="crop-foot">
+      <button class="btn btn-ghost" onclick="closeCrop()">Kapat</button>
+      <button class="btn btn-soft" id="cropOrigBtn" onclick="cropApply(false)">Sadece kes (orijinal)</button>
+      <button class="btn btn-primary" id="cropBgBtn" onclick="cropApply(true)">Kes + remove.bg</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 /* ===== CONFIG ===== */
@@ -825,8 +863,9 @@ function catCard(x){
     <div>
       <div class="cat-head-row"><span class="cat-code">${esc(x.modelCode||"?")}-${esc(x.colorCode||"?")}</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-soft btn-sm" onclick="openCrop('${x._id}')" title="PNG sayfadan bu ürünü kutuyla kes">✂️ Sayfadan kes</button>
           <button class="btn btn-soft btn-sm" onclick="catUseOriginal('${x._id}')" title="Yüklediğin fotoğrafı hiç değiştirmeden kullan">Orijinali kullan</button>
-          <button class="btn btn-ghost btn-sm" onclick="catRemoveBg('${x._id}')" title="Ürünü koru, sadece arka planı beyaz yap">Arka planı sil</button>
+          <button class="btn btn-ghost btn-sm" onclick="catRemoveBgApi('${x._id}')" title="remove.bg ile ürünü koru, zemini beyaz yap">Arka planı sil (remove.bg)</button>
           <button class="btn btn-ghost btn-sm" onclick="catGenImage('${x._id}')" title="Foto yoksa sıfırdan AI görsel üretir (ürünü yeniden çizer)">✨ AI üret</button>
           <button class="btn btn-soft btn-sm" onclick="addCatalogItem('${x._id}')">Ürünlere ekle</button>
         </div></div>
@@ -858,6 +897,81 @@ function catAddExtras(id,el){const it=state.catItems.find(x=>x._id===id);if(!it)
   files.forEach(f=>{const r=new FileReader();r.onload=()=>{it.extras.push({data:String(r.result).split(",")[1],mime:f.type});left--;if(left===0){renderCatalogResults();toast(it.extras.length+" detay foto eklendi");}};r.readAsDataURL(f);});}
 function catClearExtras(id){const it=state.catItems.find(x=>x._id===id);if(!it)return;it.extras=[];renderCatalogResults();toast("Detay fotolar temizlendi");}
 
+/* ===== SAYFADAN KES (kırpma aracı) ===== */
+// yüklenen PNG sayfa kartlar arasında hatırlanır: state.cropPageData
+function openCrop(id){
+  state.cropTarget=id;
+  const it=state.catItems.find(x=>x._id===id);
+  document.getElementById("cropTitle").textContent="Sayfadan kes — "+((it&&it.modelCode)||"")+"-"+((it&&it.colorCode)||"");
+  const img=document.getElementById("cropImg");
+  if(state.cropPageData){ img.src=state.cropPageData; document.getElementById("cropHint").textContent="Fareyle ürünün üzerine kutu çiz, sonra alttan seç."; }
+  else { img.removeAttribute("src"); document.getElementById("cropHint").textContent="Önce PNG sayfayı yükle."; }
+  resetCropSel();
+  document.getElementById("cropModal").classList.add("on");
+  bindCropDraw();
+}
+function closeCrop(){document.getElementById("cropModal").classList.remove("on");}
+function resetCropSel(){state.cropSel=null;const s=document.getElementById("cropSel");if(s)s.style.display="none";}
+function cropLoadFile(el){
+  const f=el.files&&el.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{state.cropPageData=String(r.result);document.getElementById("cropImg").src=state.cropPageData;
+    document.getElementById("cropHint").textContent="Fareyle ürünün üzerine kutu çiz, sonra alttan seç.";resetCropSel();};
+  r.readAsDataURL(f);
+}
+let _cropBound=false;
+function bindCropDraw(){
+  if(_cropBound)return; _cropBound=true;
+  const stage=document.getElementById("cropStage");
+  const img=document.getElementById("cropImg");
+  const sel=document.getElementById("cropSel");
+  let drawing=false,sx=0,sy=0;
+  const pt=e=>{const t=e.touches?e.touches[0]:e;const r=stage.getBoundingClientRect();return{x:t.clientX-r.left+stage.scrollLeft,y:t.clientY-r.top+stage.scrollTop};};
+  const start=e=>{if(!img.src)return;e.preventDefault();drawing=true;const p=pt(e);sx=p.x;sy=p.y;sel.style.display="block";sel.style.left=sx+"px";sel.style.top=sy+"px";sel.style.width="0px";sel.style.height="0px";};
+  const move=e=>{if(!drawing)return;e.preventDefault();const p=pt(e);const x=Math.min(p.x,sx),y=Math.min(p.y,sy),w=Math.abs(p.x-sx),h=Math.abs(p.y-sy);sel.style.left=x+"px";sel.style.top=y+"px";sel.style.width=w+"px";sel.style.height=h+"px";};
+  const end=e=>{if(!drawing)return;drawing=false;
+    // img'in stage içindeki konumu
+    const ir=img.getBoundingClientRect(),sr=stage.getBoundingClientRect();
+    const offx=ir.left-sr.left+stage.scrollLeft, offy=ir.top-sr.top+stage.scrollTop;
+    const selL=parseFloat(sel.style.left),selT=parseFloat(sel.style.top),selW=parseFloat(sel.style.width),selH=parseFloat(sel.style.height);
+    if(selW<6||selH<6){resetCropSel();return;}
+    const scale=img.naturalWidth/ir.width; // görüntü→doğal ölçek
+    state.cropSel={x:Math.max(0,(selL-offx))*scale,y:Math.max(0,(selT-offy))*scale,w:selW*scale,h:selH*scale};
+  };
+  stage.addEventListener("mousedown",start);stage.addEventListener("mousemove",move);window.addEventListener("mouseup",end);
+  stage.addEventListener("touchstart",start,{passive:false});stage.addEventListener("touchmove",move,{passive:false});window.addEventListener("touchend",end);
+}
+function cropToBase64(){
+  const img=document.getElementById("cropImg");
+  const s=state.cropSel;
+  if(!img.src){toast("Önce PNG sayfa yükle");return null;}
+  if(!s){toast("Önce ürünün üzerine kutu çiz");return null;}
+  const cv=document.createElement("canvas");cv.width=Math.round(s.w);cv.height=Math.round(s.h);
+  const ctx=cv.getContext("2d");
+  ctx.drawImage(img,s.x,s.y,s.w,s.h,0,0,cv.width,cv.height);
+  return cv.toDataURL("image/png").split(",")[1];
+}
+async function cropApply(useBg){
+  const id=state.cropTarget;const it=state.catItems.find(x=>x._id===id);if(!it){toast("Kart yok");return;}
+  const b64=cropToBase64();if(!b64)return;
+  const name=(it.modelCode||"g")+"-"+(it.colorCode||"");
+  if(useBg){
+    toast("Kesildi → remove.bg ile temizleniyor…");
+    const res=await post({action:"removebg",data:b64,name:name});
+    if(res.ok===false||!res.url){toast(res.error||"remove.bg hatası");return;}
+    it.source=b64;it.sourceMime="image/png";catImg(id,res.url);
+    toast("Kesildi + arka plan silindi ✓");
+  }else{
+    toast("Kesildi → yükleniyor…");
+    const res=await post({action:"upload_image",data:b64,mime:"image/png",name:name});
+    if(res.ok===false||!res.url){toast(res.error||"Yükleme hatası");return;}
+    it.source=b64;it.sourceMime="image/png";catImg(id,res.url);
+    toast("Kesildi (orijinal) ✓");
+  }
+  resetCropSel();
+  // sonraki ürün için sayfa açık kalır; istersen kapat
+}
+
 // --- ORİJİNALİ KORU: yüklenen fotoğrafı hiç değiştirmeden ürün görseli yap ---
 async function catUseOriginal(id){
   const it=state.catItems.find(x=>x._id===id);if(!it)return;
@@ -868,7 +982,17 @@ async function catUseOriginal(id){
   catImg(id,res.url);toast("Orijinal foto eklendi ✓ (hiç değiştirilmedi)");
 }
 
-// --- ARKA PLANI SİL: ürünün pikselleri korunur, sadece arka plan beyaz olur (tarayıcıda) ---
+// --- remove.bg ile arka plan sil (ürün birebir korunur, zemin beyaz) ---
+async function catRemoveBgApi(id){
+  const it=state.catItems.find(x=>x._id===id);if(!it)return;
+  if(!it.source){toast("Önce ana fotoğrafı yükle (sol üstteki kutuya tıkla)");return;}
+  toast("remove.bg ile temizleniyor…");
+  const res=await post({action:"removebg",data:it.source,name:(it.modelCode||"g")+"-"+(it.colorCode||"")});
+  if(res.ok===false||!res.url){toast(res.error||"remove.bg hatası");return;}
+  catImg(id,res.url);toast("Arka plan silindi ✓ (remove.bg — ürün birebir korundu)");
+}
+
+// --- ARKA PLANI SİL (tarayıcı / @imgly) — yedek ---
 let _bgRemover=null;
 async function loadBgRemover(){
   if(_bgRemover) return _bgRemover;
